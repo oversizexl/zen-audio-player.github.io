@@ -396,6 +396,8 @@ describe("Autoplay and Repeat Features", async function() {
         // but we can verify the video setup and toggle functionality works
         assert.ok(true, "Autoplay test completed - video setup and toggle functionality verified");
 
+        // TODO: add a real assertion here, maybe video title change, etc.
+
         await page.close();
     });
 });
