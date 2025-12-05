@@ -37,7 +37,9 @@ before(async function() {
             }
         });
     });
-    global.browser = global.browser || await puppeteer.launch();
+    global.browser = global.browser || await puppeteer.launch({
+        args: ["--no-sandbox", "--disable-setuid-sandbox"]
+    });
 });
 
 describe("Demo", async function() {
