@@ -286,16 +286,18 @@ var ZenPlayer = {
         // toggle auto next song playing
         $("#toggleAutoplay").click(function(event) {
             var toggleTextElement = $("#" + event.currentTarget.id);
-            if (autoplayState) {
-                toggleTextElement.text("Start autoplay");
+            toggleTextElement.toggleClass("toggleAutoplayActive");
+            var active = toggleTextElement.hasClass("toggleAutoplayActive");
+            if (active) {
+                toggleTextElement.html("&#10004; Autoplay");
+                autoplayState = true;
+                window.sessionStorage.setItem("autoPlay", true);
+            }
+            else {
+                toggleTextElement.html("Autoplay");
                 autoplayState = false;
                 window.sessionStorage.removeItem("autoPlay");
                 window.sessionStorage.removeItem("playList");
-            }
-            else {
-                toggleTextElement.text("Stop autoplay");
-                autoplayState = true;
-                window.sessionStorage.setItem("autoPlay", true);
             }
         });
     },
@@ -568,11 +570,14 @@ function pickDemo() {
 }
 
 function updateAutoplayToggle(state) {
+    var toggleElement = $("#toggleAutoplay");
     if (state) {
-        $("#toggleAutoplay").text("Stop autoplay");
+        toggleElement.addClass("toggleAutoplayActive");
+        toggleElement.html("&#10004; Autoplay");
     }
     else {
-        $("#toggleAutoplay").text("Start autoplay");
+        toggleElement.removeClass("toggleAutoplayActive");
+        toggleElement.html("Autoplay");
     }
 }
 

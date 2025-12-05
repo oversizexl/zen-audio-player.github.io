@@ -85,14 +85,14 @@ a {
     width: 80%;
 }
 
-.toggleRepeatActive {
+.toggleRepeatActive, .toggleAutoplayActive {
     background-color: #428bca;
     background-image: linear-gradient(#3174ac, #428bca);
     border: 1px solid #738896;
     color: #ffffff;
 }
 
-.toggleRepeatActive:hover {
+.toggleRepeatActive:hover, .toggleAutoplayActive:hover {
     background-image: linear-gradient(#194468, #3174ac);
     border: 1px solid #617f94;
 }
