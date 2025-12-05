@@ -15,7 +15,10 @@
     "fix": "eslint js/everything.js test/*.js --fix",
     "fest": "npm run fix && npm test",
     "start": "http-server --cors -o -a localhost",
-    "snyk-monitor": "snyk monitor"
+    "snyk-monitor": "snyk monitor",
+    "test:docker": "time docker build --platform linux/amd64 -f .github/Dockerfile -t zen-audio-test . && time docker run --platform linux/amd64 --rm zen-audio-test",
+    "docker:clean": "docker builder prune --force --filter type=cache.local",
+    "docker:cache-stats": "docker builder df"
   },
   "repository": {
     "type": "git",
