@@ -13,6 +13,7 @@
     "pretest": "npm run stylelint:css && npm run lint",
     "test": "mocha",
     "fix": "eslint js/everything.js test/*.js --fix",
+    "fest": "npm run fix && npm test",
     "start": "http-server --cors -o -a localhost",
     "snyk-monitor": "snyk monitor"
   },

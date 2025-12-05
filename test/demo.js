@@ -24,60 +24,74 @@ const demos = [
     "03O2yKUgrKw"  // Mike Mago & Dragonette - Outlines
 ];
 
-(async () => {
-    before(async function() {
-        server = http.createServer({root: path.join(__dirname, "..")});
-        server.listen(SERVER_PORT);
-        global.browser = global.browser || await puppeteer.launch();
-    });
-
-    describe("Demo", async function() {
-        // set timeout for this test
-        this.timeout(TEST_TIMEOUT);
-
-        it("should play the demo when demo button is clicked", async function() {
-            const page = await browser.newPage();
-            await page.goto(indexHTMLURL);
-
-            const plyrLoaded = await page.waitForSelector(".plyr");
-            assert.ok(plyrLoaded);
-
-            const oldUrl = page.url();
-            await page.click("#demo");
-
-            // Make sure the URL changed
-            assert.notEqual(oldUrl, page.url());
-
-            // Check for any of the demo videos ID in the URL
-            assert.notEqual(demos.indexOf(getParameterByName(page.url(), "v")), -1);
-
-            // Check for any of the demo videos ID in the textbox
-            const textBox = await page.waitForSelector("#v");
-            let textBoxValue = await textBox.evaluate(el => el.value);
-            assert.notEqual(demos.indexOf(textBoxValue), -1);
-
-            // TODO: once upon a time, using browser.evaluate("player") would give meaningful
-            //     : info. But there's a race condition where sometimes the player object isn't ready yet...?
-            //     : looks like can't rely on global variables.
-            // TODO: How do we inspect the player object (title, etc.)?
-
-            const plyPlayer = await page.evaluate(() => {
-                return window.plyrPlayer;
-            });
-            assert.ok(plyPlayer);
-
-            const toggleButton = await page.waitForSelector("#togglePlayer");
-            let toggleButtonText = await toggleButton.evaluate(el => el.textContent);
-            assert.equal(toggleButtonText.trim(), "Show Player");
-
-            const zenError = await page.waitForSelector("#zen-error");
-            let zenErrorText = await zenError.evaluate(el => el.textContent);
-            assert.equal(zenErrorText, "");
+before(async function() {
+    this.timeout(10000);
+    server = http.createServer({root: path.join(__dirname, "..")});
+    await new Promise((resolve, reject) => {
+        server.listen(SERVER_PORT, (err) => {
+            if (err) {
+                reject(err);
+            }
+            else {
+                resolve();
+            }
         });
     });
+    global.browser = global.browser || await puppeteer.launch();
+});
 
-    after(async () => {
-        await server.close();
-        await browser.close();
+describe("Demo", async function() {
+    // set timeout for this test
+    this.timeout(TEST_TIMEOUT);
+
+    it("should play the demo when demo button is clicked", async function() {
+        const page = await browser.newPage();
+        await page.goto(indexHTMLURL);
+
+        const plyrLoaded = await page.waitForSelector(".plyr");
+        assert.ok(plyrLoaded);
+
+        const oldUrl = page.url();
+        await page.click("#demo");
+
+        // Make sure the URL changed
+        assert.notEqual(oldUrl, page.url());
+
+        // Check for any of the demo videos ID in the URL
+        assert.notEqual(demos.indexOf(getParameterByName(page.url(), "v")), -1);
+
+        // Check for any of the demo videos ID in the textbox
+        const textBox = await page.waitForSelector("#v");
+        let textBoxValue = await textBox.evaluate(el => el.value);
+        assert.notEqual(demos.indexOf(textBoxValue), -1);
+
+        // TODO: once upon a time, using browser.evaluate("player") would give meaningful
+        //     : info. But there's a race condition where sometimes the player object isn't ready yet...?
+        //     : looks like can't rely on global variables.
+        // TODO: How do we inspect the player object (title, etc.)?
+
+        const plyPlayer = await page.evaluate(() => {
+            return window.plyrPlayer;
+        });
+        assert.ok(plyPlayer);
+
+        const toggleButton = await page.waitForSelector("#togglePlayer");
+        let toggleButtonText = await toggleButton.evaluate(el => el.textContent);
+        assert.equal(toggleButtonText.trim(), "Show Player");
+
+        const zenError = await page.waitForSelector("#zen-error");
+        let zenErrorText = await zenError.evaluate(el => el.textContent);
+        assert.equal(zenErrorText, "");
+
+        await page.close();
     });
-})();
+});
+
+after(async () => {
+    if (server) {
+        await server.close();
+    }
+    if (browser) {
+        await browser.close();
+    }
+});
