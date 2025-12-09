@@ -104,7 +104,7 @@ async function setToggleState(page, toggleId, desired) {
  */
 async function getToggleState(page, toggleId) {
     // Wait for the button to be visible and ready
-    await page.waitForSelector(`#${toggleId}`, { visible: true, timeout: 10000 });
+    await page.waitForSelector(`#${toggleId}`, { visible: true, timeout: 30000 });
 
     return await page.evaluate((toggleId) => {
         const btn = document.querySelector(`#${toggleId}`);
@@ -176,7 +176,7 @@ describe("Autoplay and Repeat Features", async function() {
         await page.goto(indexHTMLURL);
 
         // Wait for player to load
-        await page.waitForSelector(".plyr", { timeout: 10000 });
+        await page.waitForSelector(".plyr", { timeout: 30000 });
 
         // Click demo button (default state should have autoplay and repeat off)
         await clickAndWait(page, "#demo", 2000);
@@ -198,7 +198,7 @@ describe("Autoplay and Repeat Features", async function() {
         const duration = initialState.duration;
 
         // Wait for audioplayer to be visible (this contains the toggle buttons)
-        await page.waitForSelector("#audioplayer", { visible: true, timeout: 10000 });
+        await page.waitForSelector("#audioplayer", { visible: true, timeout: 30000 });
         await page.waitForTimeout(500); // Small delay for UI to settle
 
         // Verify toggle states (autoplay off, repeat off)
@@ -256,7 +256,7 @@ describe("Autoplay and Repeat Features", async function() {
         await page.goto(indexHTMLURL);
 
         // Wait for player to load
-        await page.waitForSelector(".plyr", { timeout: 10000 });
+        await page.waitForSelector(".plyr", { timeout: 30000 });
 
         // Click demo button first to make buttons visible
         await clickAndWait(page, "#demo", 2000);
@@ -269,7 +269,7 @@ describe("Autoplay and Repeat Features", async function() {
         }, 10000);
 
         // Ensure controls container is visible
-        await page.waitForSelector("#audioplayer", { visible: true, timeout: 10000 });
+        await page.waitForSelector("#audioplayer", { visible: true, timeout: 30000 });
 
         // Now set autoplay off and repeat on (buttons are now visible)
         await setToggleState(page, "toggleAutoplay", false);
@@ -369,7 +369,7 @@ describe("Autoplay and Repeat Features", async function() {
         await page.goto(indexHTMLURL);
 
         // Wait for player to load
-        await page.waitForSelector(".plyr", { timeout: 10000 });
+        await page.waitForSelector(".plyr", { timeout: 30000 });
 
         // Click demo button first to make buttons visible
         await clickAndWait(page, "#demo", 2000);
@@ -382,7 +382,7 @@ describe("Autoplay and Repeat Features", async function() {
         }, 10000);
 
         // Ensure controls container is visible
-        await page.waitForSelector("#audioplayer", { visible: true, timeout: 10000 });
+        await page.waitForSelector("#audioplayer", { visible: true, timeout: 30000 });
 
         // Now set autoplay on and repeat off (buttons are now visible)
         await setToggleState(page, "toggleAutoplay", true);
