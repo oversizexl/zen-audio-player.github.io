@@ -142,7 +142,7 @@ before(async function() {
 
 describe("Autoplay and Repeat Features", async function() {
     // Set a longer timeout for video tests (especially test 3 needs time for autoplay)
-    this.timeout(45000); // 45 seconds for autoplay test
+    this.timeout(90000); // 90 seconds for autoplay test in CI
 
     // Create a new browser context for each test to ensure clean state
     // Browser contexts are isolated - no shared cookies, localStorage, or sessionStorage
