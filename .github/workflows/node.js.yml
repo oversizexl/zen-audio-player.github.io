@@ -1,7 +1,6 @@
-# This workflow will do a clean installation of node dependencies, cache/restore them, build the source code and run tests across different versions of node
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-nodejs
+# This workflow will do a clean installation of node dependencies, cache/restore them, build the source code and run tests using the official Puppeteer container
 
-name: Node.js CI (new)
+name: Node.js CI (with Puppeteer Container)
 
 on:
   push:
@@ -11,7 +10,9 @@ on:
 
 jobs:
   build:
-
+    container:
+      image: ghcr.io/puppeteer/puppeteer:24
+      options: --cap-add=SYS_ADMIN --init
     runs-on: ubuntu-latest
 
     strategy:
@@ -20,22 +21,30 @@ jobs:
         # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Use Node.js ${{ matrix.node-version }}
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Setup Node.js
       uses: actions/setup-node@v3
       with:
         node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-    - name: Install Chromium and dependencies
+        
+    - name: Install dependencies
+      env:
+        PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: true
+        PUPPETEER_SKIP_DOWNLOAD: true
       run: |
-        sudo apt-get update
-        sudo apt-get install -y wget gnupg ca-certificates curl
-        wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo gpg --dearmor -o /usr/share/keyrings/google-chrome-keyring.gpg
-        echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
-        sudo apt-get update
-        sudo apt-get install -y google-chrome-stable
-        echo "PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome" >> $GITHUB_ENV
-        echo "PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true" >> $GITHUB_ENV
-    - run: npm ci
-    - run: npm run build --if-present
-    - run: npm test
+        # Skip Puppeteer download since container has Chrome pre-installed
+        npm ci --ignore-scripts || npm install --no-package-lock
+      
+    - name: Build (if needed)
+      run: npm run build --if-present
+      
+    - name: Run tests with CI environment
+      env:
+        CI: true
+        PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: true
+        PUPPETEER_SKIP_DOWNLOAD: true
+        PUPPETEER_SKIP_CHROMIUM_VERSION_CHECK: true
+        PUPPETEER_CACHE_DIR: /home/pptruser/.cache/puppeteer
+      run: npm test

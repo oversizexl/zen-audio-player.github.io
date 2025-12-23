@@ -42,7 +42,7 @@
     "htmlhint": "^1.1.4",
     "http-server": "^14.1.1",
     "mocha": "^10.2.0",
-    "puppeteer": "^21.1.0",
+    "puppeteer": "^24.0.0",
     "snyk": "^1.996.0",
     "stylelint": "^13.13.1"
   },
