@@ -220,17 +220,13 @@ describe("Autoplay and Repeat Features", async function() {
         const page = await context.newPage();
         await page.goto(indexHTMLURL);
 
-        console.log("Page loaded, checking for elements...");
-
         // Wait for player to load
         await page.waitForSelector(".plyr", { timeout: 30000 });
-        console.log("Plyr element found");
 
         // Click demo button (default state should have autoplay and repeat off)
         await clickAndWait(page, "#demo", 2000);
 
         // Wait for video to start playing (buttons become visible then)
-        console.log("Waiting for video to start playing...");
         await waitForCondition(page, () => {
             const player = window.plyrPlayer;
             const isPlaying = player && player.plyr && player.plyr.embed &&
@@ -278,7 +274,6 @@ describe("Autoplay and Repeat Features", async function() {
 
         // Check final state - video should have stopped, title unchanged
         const finalState = await getVideoState(page);
-        console.log("Final state:", finalState);
         assert.ok(finalState, "Should have final video state");
         if (finalState.error) {
             assert.fail(`Video state error: ${finalState.error}`);
