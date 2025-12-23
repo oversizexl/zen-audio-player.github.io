@@ -13,6 +13,7 @@ jobs:
     container:
       image: ghcr.io/puppeteer/puppeteer:24
       options: --cap-add=SYS_ADMIN --init
+      user: root
     runs-on: ubuntu-latest
 
     strategy:
