@@ -10,11 +10,12 @@ on:
 
 jobs:
   build:
+    runs-on: ubuntu-latest
     container:
       image: ghcr.io/puppeteer/puppeteer:24
       options: --cap-add=SYS_ADMIN --init
-      user: root
-    runs-on: ubuntu-latest
+      env:
+        NODE_OPTIONS: --max-old-space-size=4096
 
     strategy:
       matrix:
@@ -47,5 +48,5 @@ jobs:
         PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: true
         PUPPETEER_SKIP_DOWNLOAD: true
         PUPPETEER_SKIP_CHROMIUM_VERSION_CHECK: true
-        PUPPETEER_CACHE_DIR: /home/pptruser/.cache/puppeteer
+        PUPPETEER_CACHE_DIR: /github/home/.cache/puppeteer
       run: npm test
