@@ -1,5 +1,3 @@
-# This workflow will do a clean installation of node dependencies, cache/restore them, build the source code and run tests using the official Puppeteer container
-
 name: Node.js CI (with Puppeteer Container)
 
 on:
@@ -15,7 +13,7 @@ jobs:
       image: ghcr.io/puppeteer/puppeteer:24
       options: --cap-add=SYS_ADMIN --init
       env:
-        NODE_OPTIONS: --max-old-space-size=4096
+        PUPPETEER_CACHE_DIR: /home/pptruser/.cache/puppeteer
 
     strategy:
       matrix:
@@ -45,8 +43,7 @@ jobs:
     - name: Run tests with CI environment
       env:
         CI: true
+        # Skip Chrome download - let Puppeteer's auto-detection work
         PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: true
         PUPPETEER_SKIP_DOWNLOAD: true
-        PUPPETEER_SKIP_CHROMIUM_VERSION_CHECK: true
-        PUPPETEER_CACHE_DIR: /github/home/.cache/puppeteer
       run: npm test
