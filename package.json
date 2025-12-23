@@ -13,8 +13,12 @@
     "pretest": "npm run stylelint:css && npm run lint",
     "test": "mocha",
     "fix": "eslint js/everything.js test/*.js --fix",
+    "fest": "npm run fix && npm test",
     "start": "http-server --cors -o -a localhost",
-    "snyk-monitor": "snyk monitor"
+    "snyk-monitor": "snyk monitor",
+    "test:docker": "time docker build -f .github/Dockerfile -t zen-audio-test . && time docker run --rm zen-audio-test",
+    "docker:clean": "docker builder prune --force --filter type=cache.local",
+    "docker:cache-stats": "docker builder df"
   },
   "repository": {
     "type": "git",
@@ -38,11 +42,11 @@
     "htmlhint": "^1.1.4",
     "http-server": "^14.1.1",
     "mocha": "^10.2.0",
-    "puppeteer": "^21.1.0",
+    "puppeteer": "^24.0.0",
     "snyk": "^1.996.0",
     "stylelint": "^13.13.1"
   },
   "engines": {
-    "node": ">=16.x"
+    "node": ">=20.x"
   }
 }
