@@ -1,13 +1,14 @@
 const path = require("path");
 const assert = require("assert");
 const puppeteer = require("puppeteer");
+const { getPuppeteerConfig } = require("./puppeteer-config");
 
 const indexHTMLURL = "file://" + path.join(__dirname, "..", "index.html");
 let _js = "";
 
 before(async function() {
     this.timeout(10000);
-    global.browser = global.browser || await puppeteer.launch();
+    global.browser = global.browser || await puppeteer.launch(getPuppeteerConfig());
 });
 
 describe("JavaScript components", async function() {
@@ -72,7 +73,7 @@ describe("JavaScript components", async function() {
 });
 
 after(async () => {
-    if (browser) {
+    if (global.browser) {
         await browser.close();
     }
 });

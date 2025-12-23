@@ -2,9 +2,10 @@ const path = require("path");
 const assert = require("assert");
 const puppeteer = require("puppeteer");
 const http = require("http-server");
+const { getPuppeteerConfig } = require("./puppeteer-config");
 
 const SERVER_PORT = 8000;
-const TEST_TIMEOUT = 5000;
+const TEST_TIMEOUT = process.env.CI ? 10000 : 5000;
 const indexHTMLURL = `http://localhost:${SERVER_PORT}/index.html`;
 let server;
 
@@ -25,7 +26,7 @@ const demos = [
 ];
 
 before(async function() {
-    this.timeout(10000);
+    this.timeout(TEST_TIMEOUT);
     server = http.createServer({root: path.join(__dirname, "..")});
     await new Promise((resolve, reject) => {
         server.listen(SERVER_PORT, (err) => {
@@ -37,16 +38,14 @@ before(async function() {
             }
         });
     });
-    global.browser = global.browser || await puppeteer.launch({
-        args: ["--no-sandbox", "--disable-setuid-sandbox"]
-    });
+    global.browser = global.browser || await puppeteer.launch(getPuppeteerConfig());
 });
 
 describe("Demo", async function() {
     // set timeout for this test
     this.timeout(TEST_TIMEOUT);
 
-    it("should play the demo when demo button is clicked", async function() {
+    it("should play demo when demo button is clicked", async function() {
         const page = await browser.newPage();
         await page.goto(indexHTMLURL);
 
@@ -56,7 +55,7 @@ describe("Demo", async function() {
         const oldUrl = page.url();
         await page.click("#demo");
 
-        // Make sure the URL changed
+        // Make sure URL changed
         assert.notEqual(oldUrl, page.url());
 
         // Check for any of the demo videos ID in the URL
@@ -93,7 +92,7 @@ after(async () => {
     if (server) {
         await server.close();
     }
-    if (browser) {
+    if (global.browser) {
         await browser.close();
     }
 });
