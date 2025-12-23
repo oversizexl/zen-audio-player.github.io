@@ -1,4 +1,4 @@
-name: Node.js CI (with Puppeteer Container)
+name: Node.js CI (Optimized Puppeteer)
 
 on:
   push:
@@ -9,11 +9,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/puppeteer/puppeteer:24
-      options: --cap-add=SYS_ADMIN --init
-      env:
-        PUPPETEER_CACHE_DIR: /home/pptruser/.cache/puppeteer
 
     strategy:
       matrix:
@@ -28,22 +23,58 @@ jobs:
       uses: actions/setup-node@v5
       with:
         node-version: ${{ matrix.node-version }}
-        
+        cache: 'npm'
+        cache-dependency-path: '**/package-lock.json'
+          
     - name: Install dependencies
-      env:
-        PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: true
-        PUPPETEER_SKIP_DOWNLOAD: true
+      run: npm ci
+      
+    - name: Get Puppeteer version for cache key
+      id: puppeteer-version
       run: |
-        # Skip Puppeteer download since container has Chrome pre-installed
-        npm ci --ignore-scripts || npm install --no-package-lock
+        VERSION=$(node -e "console.log(require('./node_modules/puppeteer/package.json').version)")
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        
+    - name: Multi-layer browser cache
+      uses: actions/cache@v5
+      with:
+        path: |
+          ~/.cache/puppeteer/
+          ~/.cache/ms-playwright/
+        key: ${{ runner.os }}-puppeteer-${{ steps.puppeteer-version.outputs.version }}-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-puppeteer-${{ steps.puppeteer-version.outputs.version }}-
+          ${{ runner.os }}-puppeteer-
+      
+    
+    - name: Install minimal Chrome dependencies (cache miss only)
+      run: |
+        sudo apt-get update -qq > /dev/null
+        sudo apt-get install -y --no-install-recommends \
+          libnspr4 \
+          libnss3 \
+          libatk-bridge2.0-0 \
+          libdrm2 \
+          libxkbcommon0 \
+          libxcomposite1 \
+          libxdamage1 \
+          libxrandr2 \
+          libgbm1 \
+          libxss1 \
+          libasound2t64 \
+          libgtk-3-0 > /dev/null 2>&1 || echo "Chrome dependencies installation failed"
+      if: steps.cache.outputs.cache-hit != 'true'
+      
+    - name: Install Chrome browser via Puppeteer (cache miss only)
+      run: |
+        npx puppeteer browsers install chrome
+      if: steps.cache.outputs.cache-hit != 'true'
       
     - name: Build (if needed)
       run: npm run build --if-present
       
-    - name: Run tests with CI environment
+    - name: Run tests with optimized settings
       env:
         CI: true
-        # Skip Chrome download - let Puppeteer's auto-detection work
         PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: true
-        PUPPETEER_SKIP_DOWNLOAD: true
       run: npm test
