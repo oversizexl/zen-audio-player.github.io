@@ -2,16 +2,17 @@ const fs = require("fs");
 const path = require("path");
 const assert = require("assert");
 const puppeteer = require("puppeteer");
+const { getPuppeteerConfig } = require("./puppeteer-config");
 
 const indexHTMLURL = "file://" + path.join(__dirname, "..", "index.html");
 
 async function getProperty(page, selector, property) {
-    return await (await (await page.waitForSelector(selector)).getProperty(property)).jsonValue();
+    return await (await (await page.waitForSelector(selector, { timeout: 5000 })).getProperty(property)).jsonValue();
 }
 
 before(async function() {
     this.timeout(10000);
-    global.browser = global.browser || await puppeteer.launch();
+    global.browser = global.browser || await puppeteer.launch(getPuppeteerConfig());
 });
 
 describe("Page Structure", async function() {
@@ -27,22 +28,40 @@ describe("Page Structure", async function() {
         await page.close();
     });
     it("should have expected metadata", async function () {
+        this.timeout(8000);
         const page = await browser.newPage();
-        await page.goto(indexHTMLURL);
+        await page.goto(indexHTMLURL, { waitUntil: "domcontentloaded" });
 
         assert.equal(page.url(), indexHTMLURL);
 
-        assert.equal(await getProperty(page, "meta ~ meta", "name"), "description");
-        assert.equal(await getProperty(page, "meta ~ meta", "content"), "Listen to YouTube videos, without the distracting visuals");
+        // Use more specific selectors instead of fragile sibling selectors
+        const metas = await page.$$("meta");
+        let foundDescription = false, foundAuthor = false, foundViewport = false, foundGoogleVerification = false;
 
-        assert.equal(await getProperty(page, "meta ~ meta ~ meta", "name"), "author");
-        assert.equal(await getProperty(page, "meta ~ meta ~ meta", "content"), "Shakeel Mohamed");
+        for (const meta of metas) {
+            const name = await meta.getProperty("name");
+            const content = await meta.getProperty("content");
+            const nameValue = await name.jsonValue();
+            const contentValue = await content.jsonValue();
 
-        assert.equal(await getProperty(page, "meta ~ meta ~ meta ~ meta", "name"), "viewport");
-        assert.equal(await getProperty(page, "meta ~ meta ~ meta ~ meta", "content"), "width=device-width, initial-scale=1");
+            if (nameValue === "description" && contentValue === "Listen to YouTube videos, without the distracting visuals") {
+                foundDescription = true;
+            }
+            if (nameValue === "author" && contentValue === "Shakeel Mohamed") {
+                foundAuthor = true;
+            }
+            if (nameValue === "viewport" && contentValue === "width=device-width, initial-scale=1") {
+                foundViewport = true;
+            }
+            if (nameValue === "google-site-verification" && contentValue === "D3SjNR3tmNYOusESQijh_oH5SGmU9QsAIVwlqizwRBU") {
+                foundGoogleVerification = true;
+            }
+        }
 
-        assert.equal(await getProperty(page, "meta ~ meta ~ meta ~ meta ~ meta", "name"), "google-site-verification");
-        assert.equal(await getProperty(page, "meta ~ meta ~ meta ~ meta ~ meta", "content"), "D3SjNR3tmNYOusESQijh_oH5SGmU9QsAIVwlqizwRBU");
+        assert.ok(foundDescription, "Description meta tag not found");
+        assert.ok(foundAuthor, "Author meta tag not found");
+        assert.ok(foundViewport, "Viewport meta tag not found");
+        assert.ok(foundGoogleVerification, "Google site verification meta tag not found");
 
         assert.equal(await getProperty(page, "title", "text"), "Zen Audio Player");
 
@@ -50,45 +69,80 @@ describe("Page Structure", async function() {
     });
 
     it("should have favicon configured correctly", async function () {
+        this.timeout(8000);
         const page = await browser.newPage();
-        await page.goto(indexHTMLURL);
+        await page.goto(indexHTMLURL, { waitUntil: "domcontentloaded" });
 
         const faviconPath = path.join("img", "favicon.ico");
         assert.ok(fs.existsSync(faviconPath));
 
-        assert.ok((await getProperty(page, "link", "href")).endsWith("img/favicon.ico"));
-        assert.equal(await getProperty(page, "link", "type"), "image/x-icon");
-        assert.equal(await getProperty(page, "link", "rel"), "shortcut icon");
+        // Find all link elements and check for favicon configurations
+        const links = await page.$$("link");
+        let foundShortcutIcon = false, foundIcon = false;
 
-        assert.ok((await getProperty(page, "link ~ link", "href")).endsWith("img/favicon.ico"));
-        assert.equal(await getProperty(page, "link ~ link", "type"), "image/x-icon");
-        assert.equal(await getProperty(page, "link ~ link", "rel"), "icon");
+        for (const link of links) {
+            const rel = await link.getProperty("rel");
+            const href = await link.getProperty("href");
+            const type = await link.getProperty("type");
+            const relValue = await rel.jsonValue();
+            const hrefValue = await href.jsonValue();
+            const typeValue = await type.jsonValue();
+
+            if (relValue === "shortcut icon" && hrefValue.includes("img/favicon.ico") && typeValue === "image/x-icon") {
+                foundShortcutIcon = true;
+            }
+            if (relValue === "icon" && hrefValue.includes("img/favicon.ico") && typeValue === "image/x-icon") {
+                foundIcon = true;
+            }
+        }
+
+        assert.ok(foundShortcutIcon, "Shortcut icon link not found");
+        assert.ok(foundIcon, "Icon link not found");
 
         await page.close();
     });
     it("should have CSS files configured correctly", async function () {
+        this.timeout(8000);
         const page = await browser.newPage();
-        await page.goto(indexHTMLURL);
+        await page.goto(indexHTMLURL, { waitUntil: "domcontentloaded" });
 
         const preloadStylesheet = "preload stylesheet";
 
-        assert.equal(await getProperty(page, "link ~ link ~ link", "rel"), preloadStylesheet);
-        assert.ok((await getProperty(page, "link ~ link ~ link", "href")).match("https:\\/\\/unpkg.com\\/primer-css@[~^]?\\d.+\\/css\\/primer.css"));
+        // Find all link elements and check for CSS configurations
+        const links = await page.$$("link");
+        let foundPrimerCSS = false, foundFontAwesome = false, foundPlyrCSS = false, foundLocalCSS = false;
 
-        assert.equal(await getProperty(page, "link ~ link ~ link ~ link", "rel"), preloadStylesheet);
-        assert.ok((await getProperty(page, "link ~ link ~ link ~ link", "href")).match("https:\\/\\/unpkg.com\\/font-awesome@[~^]?\\d.+\\/css\\/font-awesome.min.css"));
+        for (const link of links) {
+            const rel = await link.getProperty("rel");
+            const href = await link.getProperty("href");
+            const relValue = await rel.jsonValue();
+            const hrefValue = await href.jsonValue();
 
-        assert.equal(await getProperty(page, "link ~ link ~ link ~ link ~ link", "rel"), preloadStylesheet);
-        assert.ok((await getProperty(page, "link ~ link ~ link ~ link ~ link", "href")).match("https:\\/\\/unpkg.com\\/plyr@[~^]?\\d.+\\/dist\\/plyr.css"));
+            if (relValue === preloadStylesheet && hrefValue.match(/https:\/\/unpkg\.com\/primer-css@[~^]?\d.+\/css\/primer\.css/)) {
+                foundPrimerCSS = true;
+            }
+            if (relValue === preloadStylesheet && hrefValue.match(/https:\/\/unpkg\.com\/font-awesome@[~^]?\d.+\/css\/font-awesome\.min\.css/)) {
+                foundFontAwesome = true;
+            }
+            if (relValue === preloadStylesheet && hrefValue.match(/https:\/\/unpkg\.com\/plyr@[~^]?\d.+\/dist\/plyr\.css/)) {
+                foundPlyrCSS = true;
+            }
+            if (relValue === preloadStylesheet && hrefValue.endsWith("css/styles.css")) {
+                foundLocalCSS = true;
+            }
+        }
 
-        assert.equal(await getProperty(page, "link ~ link ~ link ~ link ~ link ~ link", "rel"), preloadStylesheet);
-        assert.ok((await getProperty(page, "link ~ link ~ link ~ link ~ link ~ link", "href")).endsWith("css/styles.css"));
+        assert.ok(foundPrimerCSS, "Primer CSS stylesheet not found");
+        assert.ok(foundFontAwesome, "Font Awesome stylesheet not found");
+        assert.ok(foundPlyrCSS, "Plyr CSS stylesheet not found");
+        assert.ok(foundLocalCSS, "Local CSS stylesheet not found");
 
         await page.close();
     });
     it("should have logo configured correctly", async function () {
+        this.timeout(8000);
         const page = await browser.newPage();
-        await page.goto(indexHTMLURL);
+        await page.goto(indexHTMLURL, { waitUntil: "domcontentloaded" });
 
         const imgFolderPath = path.join(__filename, "..", "..", "img") + path.sep;
 

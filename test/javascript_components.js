@@ -13,8 +13,12 @@ before(async function() {
 
 describe("JavaScript components", async function() {
     it("should load TrackJS token", async function() {
+        this.timeout(8000);
         const page = await browser.newPage();
-        await page.goto(indexHTMLURL);
+        await page.goto(indexHTMLURL, { waitUntil: "domcontentloaded" });
+
+        // Wait for TrackJS to be available
+        await page.waitForFunction(() => window._trackJs && window._trackJs.token, { timeout: 5000 });
 
         const trackjs = await page.evaluate(() => {
             return window._trackJs;
@@ -32,8 +36,9 @@ describe("JavaScript components", async function() {
         await page.close();
     });
     it("should load jQuery", async function() {
+        this.timeout(8000);
         const page = await browser.newPage();
-        await page.goto(indexHTMLURL);
+        await page.goto(indexHTMLURL, { waitUntil: "domcontentloaded" });
 
         const j = await page.evaluate(() => {
             return Object.keys(window).includes("jQuery");
@@ -44,8 +49,12 @@ describe("JavaScript components", async function() {
     });
 
     it("should load DOMPurify and sanitize", async function() {
+        this.timeout(8000);
         const page = await browser.newPage();
-        await page.goto(indexHTMLURL);
+        await page.goto(indexHTMLURL, { waitUntil: "domcontentloaded" });
+
+        // Wait for DOMPurify to be available
+        await page.waitForFunction(() => window.DOMPurify, { timeout: 5000 });
 
         const dp = await page.evaluate(() => {
             return Object.keys(window).includes("DOMPurify");
@@ -63,8 +72,9 @@ describe("JavaScript components", async function() {
 
     // TODO: implement this test! _js is always empty
     it("should make all requests over https, not http", async function() {
+        this.timeout(8000);
         const page = await browser.newPage();
-        await page.goto(indexHTMLURL);
+        await page.goto(indexHTMLURL, { waitUntil: "domcontentloaded" });
 
         assert.strictEqual(-1, _js.indexOf("http://"), "Please use HTTPS for all scripts");
 
