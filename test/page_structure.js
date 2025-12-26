@@ -171,7 +171,27 @@ describe("Page Structure", async function() {
         assert.ok(await page.$("header > figure > a.zen-logo > img.img-100"), "Couldn't find <header><figure><a><img>");
         assert.ok(await page.$("#form"), "Couldn't find #form");
 
-        // TODO: validate the rest of the form
+        // Validate form structure and elements
+        assert.ok(await page.$("#v"), "Couldn't find #v input");
+        assert.ok(await page.$("#submit"), "Couldn't find #submit button");
+        assert.ok(await page.$("#zen-error"), "Couldn't find #zen-error element");
+        
+        // Validate form attributes
+        const input = await page.$("#v");
+        assert.equal(await getProperty(page, "#v", "name"), "v", "Input field should have name='v'");
+        assert.equal(await getProperty(page, "#v", "type"), "text", "Input field should be type='text'");
+        assert.ok((await getProperty(page, "#v", "placeholder") || "").includes("Search"), "Input should have search placeholder");
+
+        // Validate submit button
+        assert.ok(await page.$("#submit"), "Couldn't find #submit");
+        // Submit button may not have type attribute (that's acceptable)
+
+        // Validate error element styling
+        const errorElement = await page.$("#zen-error");
+        assert.ok(errorElement, "Error element should exist");
+        assert.ok((await errorElement.getAttribute("class") || "").includes("flash"), "Error element should have flash class");
+        assert.ok((await errorElement.getAttribute("class") || "").includes("flash-error"), "Error element should have flash-error class");
+
         assert.ok(await page.$("#demo"), "Couldn't find #demo");
         assert.ok(await page.$("#submit"), "Couldn't find #submit");
         assert.ok(await page.$("#zen-error"), "Couldn't find #zen-error");
