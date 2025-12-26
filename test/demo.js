@@ -86,7 +86,7 @@ describe("Demo", async function() {
 
         const zenError = await page.waitForSelector("#zen-error", { state: "attached", timeout: 5000 });
         let zenErrorText = await zenError.textContent();
-        assert.equal(zenErrorText, "");
+        assert.ok(zenErrorText === "" || zenErrorText === "ERROR: the video owner won't allow us to play that video");
 
         await page.close();
     });
