@@ -15,7 +15,6 @@
     "fix": "eslint js/everything.js test/*.js --fix",
     "fest": "npm run fix && npm test",
     "start": "http-server --cors -o -a localhost",
-    "snyk-monitor": "snyk monitor",
     "test:docker": "time docker build -f .github/Dockerfile -t zen-audio-test . && time docker run --rm zen-audio-test",
     "docker:clean": "docker builder prune --force --filter type=cache.local",
     "docker:cache-stats": "docker builder df"
@@ -42,10 +41,9 @@
     "csslint": "^1.0.5",
     "eslint": "^9.39.2",
     "globals": "^16.5.0",
-    "htmlhint": "^1.1.4",
+    "htmlhint": "^1.8.0",
     "http-server": "^14.1.1",
     "mocha": "^10.2.0",
-    "snyk": "^1.996.0",
     "stylelint": "^16.26.1",
     "stylelint-config-standard": "^39.0.1"
   },
