@@ -1,12 +1,12 @@
 // const path = require("path");
 // const assert = require("assert");
-// const puppeteer = require("puppeteer");
+// const { chromium } = require("playwright");
 
 // const indexHTMLURL = "file://" + path.join(__dirname, "..", "index.html");
 
 // before(async function() {
 //     this.timeout(10000);
-//     global.browser = global.browser || await puppeteer.launch();
+//     global.browser = global.browser || await chromium.launch();
 // });
 
 // describe("Form", async function() {

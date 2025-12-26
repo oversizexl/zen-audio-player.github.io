@@ -1,14 +1,14 @@
 const path = require("path");
 const assert = require("assert");
-const puppeteer = require("puppeteer");
-const { getPuppeteerConfig } = require("./puppeteer-config");
+const { chromium } = require("playwright");
+const { getPlaywrightConfig } = require("./playwright-config");
 
 const indexHTMLURL = "file://" + path.join(__dirname, "..", "index.html");
 let _js = "";
 
 before(async function() {
     this.timeout(10000);
-    global.browser = global.browser || await puppeteer.launch(getPuppeteerConfig());
+    global.browser = global.browser || await chromium.launch(getPlaywrightConfig().launchOptions);
 });
 
 describe("JavaScript components", async function() {

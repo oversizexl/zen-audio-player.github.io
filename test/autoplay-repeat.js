@@ -1,8 +1,8 @@
 const path = require("path");
 const assert = require("assert");
-const puppeteer = require("puppeteer");
+const { chromium } = require("playwright");
 const http = require("http-server");
-const { getPuppeteerConfig } = require("./puppeteer-config");
+const { getPlaywrightConfig } = require("./playwright-config");
 
 const SERVER_PORT = 8001; // Different port from demo.js to avoid conflicts
 const indexHTMLURL = `http://localhost:${SERVER_PORT}/index.html`;
@@ -89,7 +89,7 @@ async function clickAndWait(page, selector) {
     await page.click(selector);
     await page.evaluate(() => new Promise(r => setTimeout(r, 2000)));
     // Wait for any navigation to complete
-    await page.waitForNavigation({ waitUntil: "networkidle0", timeout: 5000 }).catch(() => {});
+    await page.waitForLoadState("networkidle", { timeout: 5000 }).catch(() => {});
 }
 
 /**
@@ -140,7 +140,7 @@ async function setToggleState(page, toggleId, desired) {
 async function getToggleState(page, toggleId) {
     // Wait for the button to be visible and ready (shorter timeout)
     try {
-        await page.waitForSelector(`#${toggleId}`, { visible: true, timeout: 8000 });
+        await page.waitForSelector(`#${toggleId}`, { state: "visible", timeout: 8000 });
     }
     catch (e) {
         console.log(`Button #${toggleId} not visible, checking if it exists at all`);
@@ -175,17 +175,17 @@ before(async function() {
         });
     });
     if (!global.browser) {
-        global.browser = await puppeteer.launch(getPuppeteerConfig());
+        global.browser = await chromium.launch(getPlaywrightConfig().launchOptions);
     }
 });
 
 describe("Autoplay and Repeat Features", async function() {
     // Skip autoplay tests in CI to prevent timeouts
-    if (process.env.CI) {
-        console.log("Skipping autoplay tests in CI environment");
-        this.timeout(1000);
-        return;
-    }
+    // if (process.env.CI) {
+    //     console.log("Skipping autoplay tests in CI environment");
+    //     this.timeout(1000);
+    //     return;
+    // }
 
     // Set a reasonable timeout for video tests in local development
     this.timeout(60000); // 60 seconds for local development
@@ -195,7 +195,7 @@ describe("Autoplay and Repeat Features", async function() {
     let context;
     beforeEach(async function() {
         // Create a new isolated browser context for each test
-        context = await browser.createBrowserContext();
+        context = await browser.newContext(getPlaywrightConfig().contextOptions);
     });
 
     afterEach(async function() {
@@ -221,7 +221,7 @@ describe("Autoplay and Repeat Features", async function() {
         await page.goto(indexHTMLURL);
 
         // Wait for player to load
-        await page.waitForSelector(".plyr", { timeout: 30000 });
+        await page.waitForSelector(".plyr", { state: "attached", timeout: 30000 });
 
         // Click demo button (default state should have autoplay and repeat off)
         await clickAndWait(page, "#demo", 2000);
@@ -305,7 +305,7 @@ describe("Autoplay and Repeat Features", async function() {
         await page.goto(indexHTMLURL);
 
         // Wait for player to load
-        await page.waitForSelector(".plyr", { timeout: 30000 });
+        await page.waitForSelector(".plyr", { state: "attached", timeout: 30000 });
 
         // Click demo button first to make buttons visible
         await clickAndWait(page, "#demo", 2000);
@@ -378,13 +378,13 @@ describe("Autoplay and Repeat Features", async function() {
             }
             try {
                 const currentTime = player.plyr.embed.getCurrentTime();
-                // Check if video has restarted (time is near 0)
-                return currentTime >= 0 && currentTime < 10;
+                // Check if video has restarted (time is much less than where we sought to)
+                return currentTime < (duration / 4);
             }
             catch (e) {
                 return false;
             }
-        }, 20000);
+        }, 25000);
 
         // Wait a bit more for state to settle
         await page.evaluate(() => new Promise(r => setTimeout(r, 1000)));
@@ -393,10 +393,10 @@ describe("Autoplay and Repeat Features", async function() {
         const finalState = await getVideoState(page);
         assert.ok(finalState, "Should have final video state");
 
-        // Current time should be reset to near 0 (between 0:00 and some small value)
+        // Current time should be reset to near 0 (between 0:00 and 1/4 of duration)
         const currentTime = finalState.currentTime;
-        assert.ok(currentTime >= 0 && currentTime < duration / 2,
-            `Current time (${currentTime}) should be near 0 (between 0 and 5 seconds)`);
+        assert.ok(currentTime >= 0 && currentTime < duration / 4,
+            `Current time (${currentTime}) should be near 0 (between 0 and ${duration / 4} seconds)`);
 
         // Title should remain the same
         assert.equal(finalState.displayedTitle, initialTitle,
@@ -417,7 +417,7 @@ describe("Autoplay and Repeat Features", async function() {
         await page.goto(indexHTMLURL);
 
         // Wait for player to load
-        await page.waitForSelector(".plyr", { timeout: 30000 });
+        await page.waitForSelector(".plyr", { state: "attached", timeout: 30000 });
 
         // Click demo button first to make buttons visible
         await clickAndWait(page, "#demo", 2000);
