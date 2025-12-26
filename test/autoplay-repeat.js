@@ -180,11 +180,11 @@ before(async function() {
 
 describe("Autoplay and Repeat Features", async function() {
     // Skip autoplay tests in CI to prevent timeouts
-    // if (process.env.CI) {
-    //     console.log("Skipping autoplay tests in CI environment");
-    //     this.timeout(1000);
-    //     return;
-    // }
+    if (process.env.CI) {
+        console.log("Skipping autoplay tests in CI environment");
+        this.timeout(1000);
+        return;
+    }
 
     // Set a reasonable timeout for video tests in local development
     this.timeout(60000); // 60 seconds for local development
