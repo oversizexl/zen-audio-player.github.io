@@ -1,3 +1,4 @@
 exit: true
 reporter: 'spec'
 timeout: 120000
+require: '@playwright/test'

@@ -1,18 +1,30 @@
 const fs = require("fs");
 const path = require("path");
 const assert = require("assert");
-const puppeteer = require("puppeteer");
-const { getPuppeteerConfig } = require("./puppeteer-config");
+const { chromium } = require("playwright");
+const { getPlaywrightConfig } = require("./playwright-config");
 
 const indexHTMLURL = "file://" + path.join(__dirname, "..", "index.html");
 
 async function getProperty(page, selector, property) {
-    return await (await (await page.waitForSelector(selector, { timeout: 5000 })).getProperty(property)).jsonValue();
+    const element = await page.waitForSelector(selector, { state: "attached", timeout: 5000 });
+    switch (property) {
+        case "text":
+            return await element.textContent();
+        case "href":
+            return await element.getAttribute("href");
+        case "src":
+            return await element.getAttribute("src");
+        case "alt":
+            return await element.getAttribute("alt");
+        default:
+            return await element.getAttribute(property);
+    }
 }
 
 before(async function() {
     this.timeout(10000);
-    global.browser = global.browser || await puppeteer.launch(getPuppeteerConfig());
+    global.browser = global.browser || await chromium.launch(getPlaywrightConfig().launchOptions);
 });
 
 describe("Page Structure", async function() {
@@ -20,10 +32,10 @@ describe("Page Structure", async function() {
         const page = await browser.newPage();
         await page.goto(indexHTMLURL);
 
-        assert.ok(await page.waitForSelector("html"), "Couldn't find <html>, wow!");
-        assert.ok(await page.waitForSelector("head"), "Couldn't find <head>, wow!");
-        assert.ok(await page.waitForSelector("body"), "Couldn't find <body>, wow!");
-        assert.ok(await page.waitForSelector("title"), "Couldn't find <title>, wow!");
+        assert.ok(await page.waitForSelector("html", { state: "attached" }), "Couldn't find <html>, wow!");
+        assert.ok(await page.waitForSelector("head", { state: "attached" }), "Couldn't find <head>, wow!");
+        assert.ok(await page.waitForSelector("body", { state: "attached" }), "Couldn't find <body>, wow!");
+        assert.ok(await page.waitForSelector("title", { state: "attached" }), "Couldn't find <title>, wow!");
 
         await page.close();
     });
@@ -39,10 +51,8 @@ describe("Page Structure", async function() {
         let foundDescription = false, foundAuthor = false, foundViewport = false, foundGoogleVerification = false;
 
         for (const meta of metas) {
-            const name = await meta.getProperty("name");
-            const content = await meta.getProperty("content");
-            const nameValue = await name.jsonValue();
-            const contentValue = await content.jsonValue();
+            const nameValue = await meta.getAttribute("name");
+            const contentValue = await meta.getAttribute("content");
 
             if (nameValue === "description" && contentValue === "Listen to YouTube videos, without the distracting visuals") {
                 foundDescription = true;
@@ -81,12 +91,9 @@ describe("Page Structure", async function() {
         let foundShortcutIcon = false, foundIcon = false;
 
         for (const link of links) {
-            const rel = await link.getProperty("rel");
-            const href = await link.getProperty("href");
-            const type = await link.getProperty("type");
-            const relValue = await rel.jsonValue();
-            const hrefValue = await href.jsonValue();
-            const typeValue = await type.jsonValue();
+            const relValue = await link.getAttribute("rel");
+            const hrefValue = await link.getAttribute("href");
+            const typeValue = await link.getAttribute("type");
 
             if (relValue === "shortcut icon" && hrefValue.includes("img/favicon.ico") && typeValue === "image/x-icon") {
                 foundShortcutIcon = true;
@@ -113,10 +120,8 @@ describe("Page Structure", async function() {
         let foundPrimerCSS = false, foundFontAwesome = false, foundPlyrCSS = false, foundLocalCSS = false;
 
         for (const link of links) {
-            const rel = await link.getProperty("rel");
-            const href = await link.getProperty("href");
-            const relValue = await rel.jsonValue();
-            const hrefValue = await href.jsonValue();
+            const relValue = await link.getAttribute("rel");
+            const hrefValue = await link.getAttribute("href");
 
             if (relValue === preloadStylesheet && hrefValue.match(/https:\/\/unpkg\.com\/primer-css@[~^]?\d.+\/css\/primer\.css/)) {
                 foundPrimerCSS = true;
@@ -160,25 +165,45 @@ describe("Page Structure", async function() {
         const page = await browser.newPage();
         await page.goto(indexHTMLURL);
 
-        assert.ok(page.$("header"), "Couldn't find header");
-        assert.ok(page.$("header > figure"), "Couldn't find <header><figure>");
-        assert.ok(page.$("header > figure > a"), "Couldn't find <header><figure><a>");
-        assert.ok(page.$("header > figure > a.zen-logo > img.img-100"), "Couldn't find <header><figure><a><img>");
-        assert.ok(page.$("#form"), "Couldn't find #form");
+        assert.ok(await page.$("header"), "Couldn't find header");
+        assert.ok(await page.$("header > figure"), "Couldn't find <header><figure>");
+        assert.ok(await page.$("header > figure > a"), "Couldn't find <header><figure><a>");
+        assert.ok(await page.$("header > figure > a.zen-logo > img.img-100"), "Couldn't find <header><figure><a><img>");
+        assert.ok(await page.$("#form"), "Couldn't find #form");
 
-        // TODO: validate the rest of the form
-        assert.ok(page.$("#demo"), "Couldn't find #demo");
-        assert.ok(page.$("#submit"), "Couldn't find #submit");
-        assert.ok(page.$("#zen-error"), "Couldn't find #zen-error");
-        assert.ok(page.$("#zen-video-title"), "Couldn't find #zen-video-title");
-        assert.ok(page.$("h3 > a#zen-video-title"), "Couldn't find a h3 > a#zen-video-title");
-        assert.ok(page.$("#audioplayer"), "Couldn't find #audioplayer");
-        assert.ok(page.$("#audioplayer > div.plyr"), "Couldn't find #audioplayer > div.plyr");
+        // Validate form structure and elements
+        assert.ok(await page.$("#v"), "Couldn't find #v input");
+        assert.ok(await page.$("#submit"), "Couldn't find #submit button");
+        assert.ok(await page.$("#zen-error"), "Couldn't find #zen-error element");
+        
+        // Validate form attributes
+        const input = await page.$("#v");
+        assert.equal(await getProperty(page, "#v", "name"), "v", "Input field should have name='v'");
+        assert.equal(await getProperty(page, "#v", "type"), "text", "Input field should be type='text'");
+        assert.ok((await getProperty(page, "#v", "placeholder") || "").includes("Search"), "Input should have search placeholder");
 
-        assert.ok(page.$("footer"), "Couldn't find footer");
-        assert.ok(page.$("footer > div.color-grey > p"), "Couldn't find footer > div.color-grey <p>Created by");
-        assert.ok(page.$("footer > div.color-grey > p ~ p"), "Couldn't find footer > div.color-grey<p>Created by...</p><p>");
-        assert.ok(page.$("footer > div.repo-info > p"), "Couldn't find footer > div.repo-info<p>Source available on GitHub...</p><p>");
+        // Validate submit button
+        assert.ok(await page.$("#submit"), "Couldn't find #submit");
+        // Submit button may not have type attribute (that's acceptable)
+
+        // Validate error element styling
+        const errorElement = await page.$("#zen-error");
+        assert.ok(errorElement, "Error element should exist");
+        assert.ok((await errorElement.getAttribute("class") || "").includes("flash"), "Error element should have flash class");
+        assert.ok((await errorElement.getAttribute("class") || "").includes("flash-error"), "Error element should have flash-error class");
+
+        assert.ok(await page.$("#demo"), "Couldn't find #demo");
+        assert.ok(await page.$("#submit"), "Couldn't find #submit");
+        assert.ok(await page.$("#zen-error"), "Couldn't find #zen-error");
+        assert.ok(await page.$("#zen-video-title"), "Couldn't find #zen-video-title");
+        assert.ok(await page.$("h3 > a#zen-video-title"), "Couldn't find a h3 > a#zen-video-title");
+        assert.ok(await page.$("#audioplayer"), "Couldn't find #audioplayer");
+        assert.ok(await page.$("#audioplayer > div.plyr"), "Couldn't find #audioplayer > div.plyr");
+
+        assert.ok(await page.$("footer"), "Couldn't find footer");
+        assert.ok(await page.$("footer > div.color-grey > p"), "Couldn't find footer > div.color-grey <p>Created by");
+        assert.ok(await page.$("footer > div.color-grey > p ~ p"), "Couldn't find footer > div.color-grey<p>Created by...</p><p>");
+        assert.ok(await page.$("footer > div.repo-info > p"), "Couldn't find footer > div.repo-info<p>Source available on GitHub...</p><p>");
 
         await page.close();
     });

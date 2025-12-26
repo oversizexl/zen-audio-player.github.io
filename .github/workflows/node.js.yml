@@ -1,4 +1,4 @@
-name: Node.js CI (Optimized Puppeteer)
+name: Node.js CI (Optimized Playwright)
 
 on:
   push:
@@ -29,46 +29,23 @@ jobs:
     - name: Install dependencies
       run: npm ci
       
-    - name: Get Puppeteer version for cache key
-      id: puppeteer-version
+    - name: Get Playwright version for cache key
+      id: playwright-version
       run: |
-        VERSION=$(node -e "console.log(require('./node_modules/puppeteer/package.json').version)")
+        VERSION=$(node -e "console.log(require('./node_modules/@playwright/test/package.json').version)")
         echo "version=$VERSION" >> $GITHUB_OUTPUT
         
-    - name: Multi-layer browser cache
+    - name: Cache Playwright browsers
       uses: actions/cache@v5
       with:
-        path: |
-          ~/.cache/puppeteer/
-          ~/.cache/ms-playwright/
-        key: ${{ runner.os }}-puppeteer-${{ steps.puppeteer-version.outputs.version }}-${{ hashFiles('**/package-lock.json') }}
+        path: ~/.cache/ms-playwright/
+        key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}-${{ hashFiles('**/package-lock.json') }}
         restore-keys: |
-          ${{ runner.os }}-puppeteer-${{ steps.puppeteer-version.outputs.version }}-
-          ${{ runner.os }}-puppeteer-
-      
+          ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}-
+          ${{ runner.os }}-playwright-
     
-    - name: Install minimal Chrome dependencies (cache miss only)
-      run: |
-        sudo apt-get update -qq > /dev/null
-        sudo apt-get install -y --no-install-recommends \
-          libnspr4 \
-          libnss3 \
-          libatk-bridge2.0-0 \
-          libdrm2 \
-          libxkbcommon0 \
-          libxcomposite1 \
-          libxdamage1 \
-          libxrandr2 \
-          libgbm1 \
-          libxss1 \
-          libasound2t64 \
-          libgtk-3-0 > /dev/null 2>&1 || echo "Chrome dependencies installation failed"
-      if: steps.cache.outputs.cache-hit != 'true'
-      
-    - name: Install Chrome browser via Puppeteer (cache miss only)
-      run: |
-        npx puppeteer browsers install chrome
-      if: steps.cache.outputs.cache-hit != 'true'
+    - name: Install Playwright browsers
+      run: npx playwright install chromium --with-deps
       
     - name: Build (if needed)
       run: npm run build --if-present
@@ -76,5 +53,4 @@ jobs:
     - name: Run tests with optimized settings
       env:
         CI: true
-        PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: true
       run: npm test
