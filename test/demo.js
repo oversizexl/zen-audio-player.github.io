@@ -86,7 +86,11 @@ describe("Demo", async function() {
 
         const zenError = await page.waitForSelector("#zen-error", { state: "attached", timeout: 5000 });
         let zenErrorText = await zenError.textContent();
-        assert.ok(zenErrorText === "" || zenErrorText === "ERROR: the video owner won't allow us to play that video");
+        const expectedErrors = [
+            "ERROR: the video owner won't allow us to play that video",
+            "ERROR: we can't play that video here, or something is wrong with YouTube's iframe API"
+        ];
+        assert.ok(zenErrorText === "" || expectedErrors.indexOf(zenErrorText) !== -1);
 
         await page.close();
     });

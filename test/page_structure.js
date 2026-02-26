@@ -129,7 +129,7 @@ describe("Page Structure", async function() {
             if (relValue === preloadStylesheet && hrefValue.match(/https:\/\/unpkg\.com\/font-awesome@[~^]?\d.+\/css\/font-awesome\.min\.css/)) {
                 foundFontAwesome = true;
             }
-            if (relValue === preloadStylesheet && hrefValue.match(/https:\/\/unpkg\.com\/plyr@[~^]?\d.+\/dist\/plyr\.css/)) {
+            if (relValue === preloadStylesheet && hrefValue.match(/https:\/\/unpkg\.com\/plyr@\d+\.\d+\.\d+\/dist\/plyr\.css/)) {
                 foundPlyrCSS = true;
             }
             if (relValue === preloadStylesheet && hrefValue.endsWith("css/styles.css")) {
@@ -198,7 +198,7 @@ describe("Page Structure", async function() {
         assert.ok(await page.$("#zen-video-title"), "Couldn't find #zen-video-title");
         assert.ok(await page.$("h3 > a#zen-video-title"), "Couldn't find a h3 > a#zen-video-title");
         assert.ok(await page.$("#audioplayer"), "Couldn't find #audioplayer");
-        assert.ok(await page.$("#audioplayer > div.plyr"), "Couldn't find #audioplayer > div.plyr");
+        assert.ok(await page.$("#audioplayer .plyr, #audioplayer video"), "Couldn't find player element under #audioplayer");
 
         assert.ok(await page.$("footer"), "Couldn't find footer");
         assert.ok(await page.$("footer > div.color-grey > p"), "Couldn't find footer > div.color-grey <p>Created by");

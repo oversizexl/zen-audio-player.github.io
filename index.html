@@ -15,7 +15,7 @@
 
     <link rel="preload stylesheet" as="style" href="https://unpkg.com/primer-css@3.x.x/css/primer.css">
     <link rel="preload stylesheet" as="style" href="https://unpkg.com/font-awesome@~4.4.0/css/font-awesome.min.css">
-    <link rel="preload stylesheet" as="style" href="https://unpkg.com/plyr@1.6.x/dist/plyr.css">
+    <link rel="preload stylesheet" as="style" href="https://unpkg.com/plyr@3.8.4/dist/plyr.css">
     <link rel="preload stylesheet" as="style" href="css/styles.css">
 
 
@@ -25,7 +25,7 @@
     <script src="https://unpkg.com/bootstrap-slider/dist/bootstrap-slider.min.js"></script>
     <script src="https://unpkg.com/corejs-typeahead@~0.11.1/dist/typeahead.jquery.min.js"></script>
     <script src="https://unpkg.com/urijs@1.18.1/src/URI.min.js"></script>
-    <script src="https://unpkg.com/plyr@1.6.x/dist/plyr.js"></script>
+    <script src="https://unpkg.com/plyr@3.8.4/dist/plyr.polyfilled.min.js"></script>
     <script src="https://unpkg.com/dompurify@^3.1.0/dist/purify.min.js"></script>
 
     <!-- Global site tag (gtag.js) - Google Analytics -->
@@ -75,6 +75,7 @@
             <h3>Search Results</h3>
             <ul></ul>
         </div>
+        <div id="zen-warning" class="hide flash flash-warn"></div>
         <div id="zen-error" class="hide flash flash-error"></div>
         <!-- The video, along with related content & messages -->
         <div id="audioplayer">
@@ -100,9 +101,7 @@
             <!-- Plyr controls' icons and Plyr player itself -->
             <div id="plyr-svg" hidden>
             </div>
-            <div class="plyr">
-                <audio></audio>
-            </div>
+            <video class="plyr"></video>
             <br>
             <div id="zen-video-description"></div>
             <br>

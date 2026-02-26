@@ -133,8 +133,9 @@ a {
     word-wrap: break-word;
 }
 
-#zen-video-error, #zen-error {
+#zen-video-error, #zen-error, #zen-warning {
     text-align: center;
+    margin-bottom: 15px;
 }
 
 #demo {
@@ -296,22 +297,60 @@ a {
     width: 100%;
 }
 
+#audioplayer .plyr {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    margin: 0 auto 10px auto;
+    overflow: visible;
+    background: transparent;
+}
+
+#audioplayer .plyr__progress input[type="range"] {
+    color: #3498db;
+}
+
+#audioplayer .plyr__progress__buffer {
+    color: #77BAE7;
+    background: #b9c8d4;
+}
+
 .plyr__video-wrapper {
     display: none;
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    aspect-ratio: 16 / 9;
+    margin: 0;
+    order: 1;
+    background: transparent;
+}
+
+.plyr__video-wrapper iframe,
+.plyr__video-wrapper video {
+    display: block;
+    width: 100%;
+    height: 100%;
 }
 
 #audioplayer .plyr__controls {
+    position: relative;
+    width: 100%;
     background: #ffffff;
     border: 1px solid #dbe3e8;
     border-radius: inherit;
     box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
     color: #565d64;
     padding: 10px;
-    position: relative;
+    z-index: 10;
+    order: 2;
+    overflow: visible;
+    margin: 0;
 }
 
-#audioplayer .plyr__volume--display, #audioplayer .plyr__progress--buffer {
-    background-color: #e8e8e8;
+#audioplayer .plyr__progress {
+    background-color: transparent;
 }
 
 @-moz-document url-prefix("") {

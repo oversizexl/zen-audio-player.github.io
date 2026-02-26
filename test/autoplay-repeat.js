@@ -53,16 +53,15 @@ async function waitForCondition(page, conditionFn, timeout = 5000) {
 async function getVideoState(page) {
     return await page.evaluate(() => {
         const player = window.plyrPlayer;
-        if (!player || !player.plyr || !player.plyr.embed) {
-            return { error: "Player or embed not available", player: !!player, plyr: !!(player && player.plyr), embed: !!(player && player.plyr && player.plyr.embed) };
+        if (!player) {
+            return { error: "Player not available", player: !!player };
         }
 
         try {
-            const embed = player.plyr.embed;
             return {
-                currentTime: embed.getCurrentTime(),
-                duration: embed.getDuration(),
-                videoTitle: embed.getVideoData().title,
+                currentTime: typeof player.currentTime === "number" ? player.currentTime : 0,
+                duration: typeof player.duration === "number" ? player.duration : 0,
+                videoTitle: window.ZenPlayer ? window.ZenPlayer.videoTitle : "",
                 isPlaying: window.ZenPlayer ? window.ZenPlayer.isPlaying : false,
                 autoplayState: window.autoplayState || false,
                 repeatState: window.ZenPlayer ? window.ZenPlayer.isRepeat : false,
@@ -78,7 +77,7 @@ async function getVideoState(page) {
             };
         }
         catch (_e) {
-            return { error: _e.message, player: !!player, plyr: !!(player && player.plyr), embed: !!(player && player.plyr && player.plyr.embed) };
+            return { error: _e.message, player: !!player };
         }
     });
 }
@@ -228,9 +227,9 @@ describe("Autoplay and Repeat Features", async function() {
         // Wait for video to start playing (buttons become visible then)
         await waitForCondition(page, () => {
             const player = window.plyrPlayer;
-            const isPlaying = player && player.plyr && player.plyr.embed &&
+            const isPlaying = player &&
                               window.ZenPlayer && window.ZenPlayer.isPlaying;
-            // console.log("Video playing check:", { player: !!player, plyr: !!(player && player.plyr), zenPlayer: !!(window.ZenPlayer), isPlaying });
+            // console.log("Video playing check:", { player: !!player, zenPlayer: !!(window.ZenPlayer), isPlaying });
             return isPlaying;
         }, 15000);
         // console.log("Video is playing!");
@@ -246,12 +245,12 @@ describe("Autoplay and Repeat Features", async function() {
         // Wait for video to reach the end
         await waitForCondition(page, () => {
             const player = window.plyrPlayer;
-            if (!player || !player.plyr || !player.plyr.embed) {
+            if (!player) {
                 return false;
             }
             try {
-                const currentTime = player.plyr.embed.getCurrentTime();
-                const duration = player.plyr.embed.getDuration();
+                const currentTime = player.currentTime;
+                const duration = player.duration;
                 // Video is at the end when currentTime is very close to duration
                 return currentTime >= duration - 1;
             }
@@ -312,7 +311,7 @@ describe("Autoplay and Repeat Features", async function() {
         // Wait for video to start playing and buttons to be visible
         await waitForCondition(page, () => {
             const player = window.plyrPlayer;
-            return player && player.plyr && player.plyr.embed &&
+            return player &&
                    window.ZenPlayer && window.ZenPlayer.isPlaying;
         }, 10000);
 
@@ -320,7 +319,7 @@ describe("Autoplay and Repeat Features", async function() {
         try {
             await page.waitForFunction(() => {
                 const player = window.plyrPlayer;
-                return player && player.plyr && player.plyr.embed;
+                return player && typeof player.currentTime === "number";
             }, { timeout: 15000 });
         }
         catch (_e) {
@@ -363,8 +362,8 @@ describe("Autoplay and Repeat Features", async function() {
         // Seek to 2 seconds before end to ensure repeat logic has time to trigger
         await page.evaluate((seekTime) => {
             const player = window.plyrPlayer;
-            if (player && player.plyr && player.plyr.embed) {
-                player.plyr.embed.seekTo(seekTime);
+            if (player && typeof player.currentTime === "number") {
+                player.currentTime = seekTime;
             }
         }, duration - 2);
 
@@ -372,11 +371,11 @@ describe("Autoplay and Repeat Features", async function() {
         // The repeat logic checks in timeupdate when currentTime >= duration
         await waitForCondition(page, () => {
             const player = window.plyrPlayer;
-            if (!player || !player.plyr || !player.plyr.embed) {
+            if (!player) {
                 return false;
             }
             try {
-                const currentTime = player.plyr.embed.getCurrentTime();
+                const currentTime = player.currentTime;
                 // Check if video has restarted (time is much less than where we sought to)
                 return currentTime < (duration / 4);
             }
@@ -424,7 +423,7 @@ describe("Autoplay and Repeat Features", async function() {
         // Wait for video to start playing and buttons to be visible
         await waitForCondition(page, () => {
             const player = window.plyrPlayer;
-            return player && player.plyr && player.plyr.embed &&
+            return player &&
                    window.ZenPlayer && window.ZenPlayer.isPlaying;
         }, 10000);
 
@@ -448,7 +447,7 @@ describe("Autoplay and Repeat Features", async function() {
         // Verify we can interact with the player controls
         const playerReady = await page.evaluate(() => {
             const player = window.plyrPlayer;
-            return player && player.plyr && player.plyr.embed;
+            return player && typeof player.currentTime === "number";
         });
         assert.ok(playerReady, "Player should be ready for autoplay test");
 
