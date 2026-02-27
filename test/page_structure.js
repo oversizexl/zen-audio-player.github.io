@@ -175,6 +175,24 @@ describe("Page Structure", async function() {
         assert.ok(await page.$(".search-input"), "Couldn't find .search-input");
         assert.ok(await page.$(".search-submit"), "Couldn't find .search-submit");
         assert.ok(await page.$(".error-message"), "Couldn't find .error-message element");
+
+        // Validate warning message presence and base styling
+        const warningMessage = await page.$(".warning-message");
+        assert.ok(warningMessage, "Couldn't find .warning-message element");
+
+        const warningClassName = await getProperty(page, ".warning-message", "class");
+        assert.ok(
+            warningClassName && warningClassName.includes("warning-message"),
+            "Warning message should have the .warning-message class"
+        );
+        assert.ok(
+            warningClassName.includes("flash"),
+            "Warning message should use the base flash styling class"
+        );
+        assert.ok(
+            warningClassName.includes("flash-warn"),
+            "Warning message should use the warning flash styling class"
+        );
         
         // Validate form attributes
         const input = await page.$(".search-input");

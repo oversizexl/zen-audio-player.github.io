@@ -95,9 +95,9 @@ async function clickAndWait(page, selector) {
 /**
  * Helper function to ensure repeat/autoplay buttons are in desired state
  */
-async function setToggleState(page, toggleSelector, desired) {
-    const cur = await getToggleState(page, toggleSelector);
-    console.log(`Setting ${toggleSelector} from ${cur} to ${desired}`);
+async function setToggleState(page, toggleSelector, desired, activeClass) {
+    const cur = await getToggleState(page, toggleSelector, activeClass);
+    console.log(`Setting ${toggleSelector} (${activeClass}) from ${cur} to ${desired}`);
 
     if (cur !== desired) {
         // Wait a bit to ensure button is fully ready
@@ -129,7 +129,7 @@ async function setToggleState(page, toggleSelector, desired) {
         await page.evaluate(() => new Promise(r => setTimeout(r, 1000)));
 
         // Verify the change took effect
-        const newCur = await getToggleState(page, toggleSelector);
+        const newCur = await getToggleState(page, toggleSelector, activeClass);
         console.log(`${toggleSelector} is now ${newCur}`);
     }
 }
@@ -137,7 +137,7 @@ async function setToggleState(page, toggleSelector, desired) {
 /**
  * Helper function to check the state of repeat/autoplay buttons
  */
-async function getToggleState(page, toggleSelector) {
+async function getToggleState(page, toggleSelector, activeClass) {
     // Wait for the button to be visible and ready (shorter timeout)
     try {
         await page.waitForSelector(toggleSelector, { state: "visible", timeout: 8000 });
@@ -147,16 +147,13 @@ async function getToggleState(page, toggleSelector) {
         console.log(`Button info for ${toggleSelector}:`, _e.message);
     }
 
-    return await page.evaluate((toggleSelector) => {
+    return await page.evaluate(({ toggleSelector, activeClass }) => {
         const btn = document.querySelector(toggleSelector);
         if (!btn) {
             return false;
         }
-        // Check for the appropriate active class based on button ID
-        const activeClass = toggleSelector.indexOf("autoplay") !== -1 ? "toggle-autoplay-active" : "toggle-repeat-active";
-
         return btn.classList.contains(activeClass);
-    }, toggleSelector);
+    }, { toggleSelector, activeClass });
 }
 
 before(async function() {
@@ -330,15 +327,15 @@ describe("Autoplay and Repeat Features", async function() {
         await page.evaluate(() => new Promise(r => setTimeout(r, 2000)));
 
         // Now set autoplay off and repeat on (buttons are now visible)
-        await setToggleState(page, ".toggle-autoplay-btn", false);
-        await setToggleState(page, ".toggle-repeat-btn", true);
+        await setToggleState(page, ".toggle-autoplay-btn", false, "toggle-autoplay-active");
+        await setToggleState(page, ".toggle-repeat-btn", true, "toggle-repeat-active");
 
         // Wait a bit for toggle state to update after clicking
         await page.evaluate(() => new Promise(r => setTimeout(r, 2000)));
 
         // Verify toggle states (autoplay off, repeat on)
-        const autoplayState = await getToggleState(page, ".toggle-autoplay-btn");
-        const repeatState = await getToggleState(page, ".toggle-repeat-btn");
+        const autoplayState = await getToggleState(page, ".toggle-autoplay-btn", "toggle-autoplay-active");
+        const repeatState = await getToggleState(page, ".toggle-repeat-btn", "toggle-repeat-active");
         console.log("Toggle states - autoplay:", autoplayState, "repeat:", repeatState);
         assert.ok(!autoplayState, "Autoplay state should be off");
         assert.ok(repeatState, "Repeat state should be on");
@@ -428,15 +425,15 @@ describe("Autoplay and Repeat Features", async function() {
         }, 10000);
 
         // Now set autoplay on and repeat off (buttons are now visible)
-        await setToggleState(page, ".toggle-autoplay-btn", true);
-        await setToggleState(page, ".toggle-repeat-btn", false);
+        await setToggleState(page, ".toggle-autoplay-btn", true, "toggle-autoplay-active");
+        await setToggleState(page, ".toggle-repeat-btn", false, "toggle-repeat-active");
 
         // Wait a bit for toggle state to update
         await page.evaluate(() => new Promise(r => setTimeout(r, 1000)));
 
         // Verify toggle states (autoplay on, repeat off)
-        const autoplayState = await getToggleState(page, ".toggle-autoplay-btn");
-        const repeatState = await getToggleState(page, ".toggle-repeat-btn");
+        const autoplayState = await getToggleState(page, ".toggle-autoplay-btn", "toggle-autoplay-active");
+        const repeatState = await getToggleState(page, ".toggle-repeat-btn", "toggle-repeat-active");
         assert.ok(autoplayState, "Autoplay state should be on");
         assert.ok(!repeatState, "Repeat state should be off");
 

@@ -186,9 +186,12 @@ var ZenPlayer = {
         $(".plyr-svg").load("https://unpkg.com/plyr@3.8.4/dist/plyr.svg");
 
         const playerEl = document.querySelector(".plyr");
-        if (playerEl) {
-            playerEl.disablePictureInPicture = true;
+        if (!playerEl) {
+            console.log("Plyr element not found; skipping player initialization.");
+            return;
         }
+
+        playerEl.disablePictureInPicture = true;
 
         plyrPlayer = new Plyr(playerEl, {
             autoplay: true,
@@ -479,8 +482,33 @@ function updateTweetMessage() {
 }
 
 function logError(jqXHR, textStatus, errorThrown, _errorMessage) {
-    const responseText = JSON.parse(jqXHR.error().responseText);
-    errorMessage.show(responseText.error.errors[0].message);
+    let parsedResponse;
+    let message = "Something went wrong while contacting YouTube.";
+
+    if (jqXHR && jqXHR.responseJSON) {
+        parsedResponse = jqXHR.responseJSON;
+    }
+    else if (jqXHR && typeof jqXHR.responseText === "string") {
+        try {
+            parsedResponse = JSON.parse(jqXHR.responseText);
+        }
+        catch (_parseError) {
+            void _parseError;
+            parsedResponse = null;
+        }
+    }
+
+    if (parsedResponse && parsedResponse.error && parsedResponse.error.errors && parsedResponse.error.errors[0] && parsedResponse.error.errors[0].message) {
+        message = parsedResponse.error.errors[0].message;
+    }
+    else if (errorThrown) {
+        message = errorThrown;
+    }
+    else if (textStatus) {
+        message = textStatus;
+    }
+
+    errorMessage.show(message);
     console.log(_errorMessage, errorThrown);
 }
 
@@ -585,7 +613,7 @@ function anchorURLs(text) {
     /* Wraps all found URLs in <a> tags, do not encode display text */
     return text.replace(re, function(u) {
         const uEncoded = encodeURI(u);
-        return `<a href="${uEncoded}" target="_blank">${u}</a>`;
+        return `<a href="${uEncoded}" target="_blank" rel="noopener noreferrer">${u}</a>`;
     });
 }
 
@@ -829,7 +857,7 @@ $(function() {
             formValueTime = parseInt(formValueTime[2], 10);
         }
         if (formValue) {
-            const videoID = wrapParseYouTubeVideoID(formValue, true);
+            const videoID = wrapParseYouTubeVideoID(formValue);
             gtag("send", "event", "form submitted", videoID);
             if (shouldSkipYouTubeDataApi()) {
                 warningMessage.show("Skipping video lookup request while running locally.");
