@@ -487,7 +487,6 @@ function toggleElement(event, selector, buttonText) {
     });
 }
 
-
 /**
  * wrapParseYouTubeVideoID the first v query value.
  * Will return null if there's no v query param
@@ -859,7 +858,6 @@ $(function() {
             errorMessage.show("Try entering a YouTube video ID or URL!");
         }
     });
-
 
     // Reverts to Home when there is no text in input
     $(".search-input").on("input", function() {

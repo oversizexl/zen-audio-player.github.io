@@ -4,6 +4,12 @@ const globals = require('globals');
 module.exports = [
     js.configs.recommended,
     {
+        files: ['js/**/*.js', 'test/**/*.js'],
+        rules: {
+            'no-multiple-empty-lines': ['error', { max: 1, maxEOF: 1, maxBOF: 0 }]
+        }
+    },
+    {
         files: ['js/**/*.js'],
         languageOptions: {
             ecmaVersion: 2017,
