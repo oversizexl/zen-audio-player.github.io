@@ -647,8 +647,8 @@ function anchorTimestamps(text, videoID) {
 }
 
 function convertTimestamp(timestamp) {
-    var seconds = 0;
-    var minutes = 0;
+    var seconds;
+    var minutes;
     var hours = 0;
     var timeComponents = timestamp.split(":");
     if (timeComponents.length === 3) {
@@ -723,7 +723,7 @@ function updateAutoplayToggle(state) {
 }
 
 function getNewVideoID() {
-    var nextID = null;
+    var nextID;
     nextID = playList.pop();
     while (currentVideoID === nextID) {
         nextID = playList.pop();
