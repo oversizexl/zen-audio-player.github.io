@@ -4,20 +4,16 @@
   "description": "Listen to YouTube videos, without the distracting visuals.",
   "main": "",
   "scripts": {
-    "lint:js": "eslint js/*.js",
-    "lint:tests": "eslint test/*.js",
-    "lint:html": "htmlhint index.html",
-    "lint:css": "csslint --format=compact --warnings=box-model,ids css/",
-    "stylelint:css": "stylelint css/*.css",
-    "lint": "npm run lint:js && npm run lint:html && npm run lint:css && npm run lint:tests",
-    "pretest": "npm run stylelint:css && npm run lint",
-    "test": "mocha",
-    "fix": "eslint js/everything.js test/*.js --fix",
-    "fest": "npm run fix && npm test",
-    "start": "http-server --cors -o -a localhost",
-    "test:docker": "time docker build -f .github/Dockerfile -t zen-audio-test . && time docker run --rm zen-audio-test",
-    "docker:clean": "docker builder prune --force --filter type=cache.local",
-    "docker:cache-stats": "docker builder df"
+    "lint:js": "bunx eslint js/*.js",
+    "lint:tests": "bunx eslint test/*.js",
+    "lint:html": "bunx htmlhint index.html",
+    "lint:css": "bunx stylelint css/*.css",
+    "lint": "bun run lint:js && bun run lint:html && bun run lint:css && bun run lint:tests",
+    "pretest": "bun run lint",
+    "test": "bunx mocha",
+    "fix": "bunx eslint js/everything.js test/*.js --fix",
+    "fest": "bun run fix && bun run test",
+    "start": "bunx http-server --cors -o -a localhost"
   },
   "repository": {
     "type": "git",
@@ -36,16 +32,16 @@
   },
   "homepage": "https://zen-audio-player.github.io",
   "devDependencies": {
-    "@eslint/js": "^9.39.2",
-    "@playwright/test": "^1.40.0",
-    "csslint": "^1.0.5",
-    "eslint": "^9.39.2",
-    "globals": "^16.5.0",
-    "htmlhint": "^1.8.0",
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.58.2",
+    "eslint": "^10.0.2",
+    "globals": "^17.3.0",
+    "htmlhint": "^1.9.1",
     "http-server": "^14.1.1",
     "mocha": "^11.7.5",
-    "stylelint": "^16.26.1",
-    "stylelint-config-standard": "^39.0.1"
+    "stylelint": "^17.4.0",
+    "stylelint-config-recess-order": "^7.6.1",
+    "stylelint-config-standard": "^40.0.0"
   },
   "engines": {
     "node": ">=20.x"

@@ -53,22 +53,21 @@ async function waitForCondition(page, conditionFn, timeout = 5000) {
 async function getVideoState(page) {
     return await page.evaluate(() => {
         const player = window.plyrPlayer;
-        if (!player || !player.plyr || !player.plyr.embed) {
-            return { error: "Player or embed not available", player: !!player, plyr: !!(player && player.plyr), embed: !!(player && player.plyr && player.plyr.embed) };
+        if (!player) {
+            return { error: "Player not available", player: !!player };
         }
 
         try {
-            const embed = player.plyr.embed;
             return {
-                currentTime: embed.getCurrentTime(),
-                duration: embed.getDuration(),
-                videoTitle: embed.getVideoData().title,
+                currentTime: typeof player.currentTime === "number" ? player.currentTime : 0,
+                duration: typeof player.duration === "number" ? player.duration : 0,
+                videoTitle: window.ZenPlayer ? window.ZenPlayer.videoTitle : "",
                 isPlaying: window.ZenPlayer ? window.ZenPlayer.isPlaying : false,
                 autoplayState: window.autoplayState || false,
                 repeatState: window.ZenPlayer ? window.ZenPlayer.isRepeat : false,
                 zenPlayer: !!window.ZenPlayer,
                 displayedTitle: (() => {
-                    const titleEl = document.querySelector("#zen-video-title");
+                    const titleEl = document.querySelector(".video-title");
                     if (!titleEl || !titleEl.textContent) {
                         return "";
                     }
@@ -78,7 +77,7 @@ async function getVideoState(page) {
             };
         }
         catch (_e) {
-            return { error: _e.message, player: !!player, plyr: !!(player && player.plyr), embed: !!(player && player.plyr && player.plyr.embed) };
+            return { error: _e.message, player: !!player };
         }
     });
 }
@@ -96,9 +95,9 @@ async function clickAndWait(page, selector) {
 /**
  * Helper function to ensure repeat/autoplay buttons are in desired state
  */
-async function setToggleState(page, toggleId, desired) {
-    const cur = await getToggleState(page, toggleId);
-    console.log(`Setting ${toggleId} from ${cur} to ${desired}`);
+async function setToggleState(page, toggleSelector, desired, activeClass) {
+    const cur = await getToggleState(page, toggleSelector, activeClass);
+    console.log(`Setting ${toggleSelector} (${activeClass}) from ${cur} to ${desired}`);
 
     if (cur !== desired) {
         // Wait a bit to ensure button is fully ready
@@ -106,14 +105,14 @@ async function setToggleState(page, toggleId, desired) {
 
         // Try clicking the button with error handling
         try {
-            await page.click(`#${toggleId}`);
-            console.log(`Clicked ${toggleId} successfully`);
+            await page.click(toggleSelector);
+            console.log(`Clicked ${toggleSelector} successfully`);
         }
         catch (_e) {
-            console.log(`Failed to click ${toggleId}:`, _e.message);
+            console.log(`Failed to click ${toggleSelector}:`, _e.message);
             // Try to find if button exists and is clickable
-            const buttonInfo = await page.evaluate((id) => {
-                const btn = document.querySelector(id);
+            const buttonInfo = await page.evaluate((selector) => {
+                const btn = document.querySelector(selector);
                 if (!btn) {
                     return { exists: false, visible: false };
                 }
@@ -123,41 +122,38 @@ async function setToggleState(page, toggleId, desired) {
                     disabled: btn.disabled,
                     classes: btn.className
                 };
-            }, toggleId);
-            console.log(`Button info for ${toggleId}:`, buttonInfo);
+            }, toggleSelector);
+            console.log(`Button info for ${toggleSelector}:`, buttonInfo);
         }
 
         await page.evaluate(() => new Promise(r => setTimeout(r, 1000)));
 
         // Verify the change took effect
-        const newCur = await getToggleState(page, toggleId);
-        console.log(`${toggleId} is now ${newCur}`);
+        const newCur = await getToggleState(page, toggleSelector, activeClass);
+        console.log(`${toggleSelector} is now ${newCur}`);
     }
 }
 
 /**
  * Helper function to check the state of repeat/autoplay buttons
  */
-async function getToggleState(page, toggleId) {
+async function getToggleState(page, toggleSelector, activeClass) {
     // Wait for the button to be visible and ready (shorter timeout)
     try {
-        await page.waitForSelector(`#${toggleId}`, { state: "visible", timeout: 8000 });
+        await page.waitForSelector(toggleSelector, { state: "visible", timeout: 8000 });
     }
     catch (_e) {
         // Console log should be ignored by ESLint in tests
-        console.log(`Button info for ${toggleId}:`, _e.message);
+        console.log(`Button info for ${toggleSelector}:`, _e.message);
     }
 
-    return await page.evaluate((toggleId) => {
-        const btn = document.querySelector(`#${toggleId}`);
+    return await page.evaluate(({ toggleSelector, activeClass }) => {
+        const btn = document.querySelector(toggleSelector);
         if (!btn) {
             return false;
         }
-        // Check for the appropriate active class based on button ID
-        const activeClass = toggleId === "toggleAutoplay" ? "toggleAutoplayActive" : "toggleRepeatActive";
-
         return btn.classList.contains(activeClass);
-    }, toggleId);
+    }, { toggleSelector, activeClass });
 }
 
 before(async function() {
@@ -223,14 +219,14 @@ describe("Autoplay and Repeat Features", async function() {
         await page.waitForSelector(".plyr", { state: "attached", timeout: 30000 });
 
         // Click demo button (default state should have autoplay and repeat off)
-        await clickAndWait(page, "#demo", 2000);
+        await clickAndWait(page, ".demo-button", 2000);
 
         // Wait for video to start playing (buttons become visible then)
         await waitForCondition(page, () => {
             const player = window.plyrPlayer;
-            const isPlaying = player && player.plyr && player.plyr.embed &&
+            const isPlaying = player &&
                               window.ZenPlayer && window.ZenPlayer.isPlaying;
-            // console.log("Video playing check:", { player: !!player, plyr: !!(player && player.plyr), zenPlayer: !!(window.ZenPlayer), isPlaying });
+            // console.log("Video playing check:", { player: !!player, zenPlayer: !!(window.ZenPlayer), isPlaying });
             return isPlaying;
         }, 15000);
         // console.log("Video is playing!");
@@ -246,12 +242,12 @@ describe("Autoplay and Repeat Features", async function() {
         // Wait for video to reach the end
         await waitForCondition(page, () => {
             const player = window.plyrPlayer;
-            if (!player || !player.plyr || !player.plyr.embed) {
+            if (!player) {
                 return false;
             }
             try {
-                const currentTime = player.plyr.embed.getCurrentTime();
-                const duration = player.plyr.embed.getDuration();
+                const currentTime = player.currentTime;
+                const duration = player.duration;
                 // Video is at the end when currentTime is very close to duration
                 return currentTime >= duration - 1;
             }
@@ -307,12 +303,12 @@ describe("Autoplay and Repeat Features", async function() {
         await page.waitForSelector(".plyr", { state: "attached", timeout: 30000 });
 
         // Click demo button first to make buttons visible
-        await clickAndWait(page, "#demo", 2000);
+        await clickAndWait(page, ".demo-button", 2000);
 
         // Wait for video to start playing and buttons to be visible
         await waitForCondition(page, () => {
             const player = window.plyrPlayer;
-            return player && player.plyr && player.plyr.embed &&
+            return player &&
                    window.ZenPlayer && window.ZenPlayer.isPlaying;
         }, 10000);
 
@@ -320,7 +316,7 @@ describe("Autoplay and Repeat Features", async function() {
         try {
             await page.waitForFunction(() => {
                 const player = window.plyrPlayer;
-                return player && player.plyr && player.plyr.embed;
+                return player && typeof player.currentTime === "number";
             }, { timeout: 15000 });
         }
         catch (_e) {
@@ -331,15 +327,15 @@ describe("Autoplay and Repeat Features", async function() {
         await page.evaluate(() => new Promise(r => setTimeout(r, 2000)));
 
         // Now set autoplay off and repeat on (buttons are now visible)
-        await setToggleState(page, "toggleAutoplay", false);
-        await setToggleState(page, "toggleRepeat", true);
+        await setToggleState(page, ".toggle-autoplay-btn", false, "toggle-autoplay-active");
+        await setToggleState(page, ".toggle-repeat-btn", true, "toggle-repeat-active");
 
         // Wait a bit for toggle state to update after clicking
         await page.evaluate(() => new Promise(r => setTimeout(r, 2000)));
 
         // Verify toggle states (autoplay off, repeat on)
-        const autoplayState = await getToggleState(page, "toggleAutoplay");
-        const repeatState = await getToggleState(page, "toggleRepeat");
+        const autoplayState = await getToggleState(page, ".toggle-autoplay-btn", "toggle-autoplay-active");
+        const repeatState = await getToggleState(page, ".toggle-repeat-btn", "toggle-repeat-active");
         console.log("Toggle states - autoplay:", autoplayState, "repeat:", repeatState);
         assert.ok(!autoplayState, "Autoplay state should be off");
         assert.ok(repeatState, "Repeat state should be on");
@@ -363,8 +359,8 @@ describe("Autoplay and Repeat Features", async function() {
         // Seek to 2 seconds before end to ensure repeat logic has time to trigger
         await page.evaluate((seekTime) => {
             const player = window.plyrPlayer;
-            if (player && player.plyr && player.plyr.embed) {
-                player.plyr.embed.seekTo(seekTime);
+            if (player && typeof player.currentTime === "number") {
+                player.currentTime = seekTime;
             }
         }, duration - 2);
 
@@ -372,11 +368,11 @@ describe("Autoplay and Repeat Features", async function() {
         // The repeat logic checks in timeupdate when currentTime >= duration
         await waitForCondition(page, () => {
             const player = window.plyrPlayer;
-            if (!player || !player.plyr || !player.plyr.embed) {
+            if (!player) {
                 return false;
             }
             try {
-                const currentTime = player.plyr.embed.getCurrentTime();
+                const currentTime = player.currentTime;
                 // Check if video has restarted (time is much less than where we sought to)
                 return currentTime < (duration / 4);
             }
@@ -419,25 +415,25 @@ describe("Autoplay and Repeat Features", async function() {
         await page.waitForSelector(".plyr", { state: "attached", timeout: 30000 });
 
         // Click demo button first to make buttons visible
-        await clickAndWait(page, "#demo", 2000);
+        await clickAndWait(page, ".demo-button", 2000);
 
         // Wait for video to start playing and buttons to be visible
         await waitForCondition(page, () => {
             const player = window.plyrPlayer;
-            return player && player.plyr && player.plyr.embed &&
+            return player &&
                    window.ZenPlayer && window.ZenPlayer.isPlaying;
         }, 10000);
 
         // Now set autoplay on and repeat off (buttons are now visible)
-        await setToggleState(page, "toggleAutoplay", true);
-        await setToggleState(page, "toggleRepeat", false);
+        await setToggleState(page, ".toggle-autoplay-btn", true, "toggle-autoplay-active");
+        await setToggleState(page, ".toggle-repeat-btn", false, "toggle-repeat-active");
 
         // Wait a bit for toggle state to update
         await page.evaluate(() => new Promise(r => setTimeout(r, 1000)));
 
         // Verify toggle states (autoplay on, repeat off)
-        const autoplayState = await getToggleState(page, "toggleAutoplay");
-        const repeatState = await getToggleState(page, "toggleRepeat");
+        const autoplayState = await getToggleState(page, ".toggle-autoplay-btn", "toggle-autoplay-active");
+        const repeatState = await getToggleState(page, ".toggle-repeat-btn", "toggle-repeat-active");
         assert.ok(autoplayState, "Autoplay state should be on");
         assert.ok(!repeatState, "Repeat state should be off");
 
@@ -448,7 +444,7 @@ describe("Autoplay and Repeat Features", async function() {
         // Verify we can interact with the player controls
         const playerReady = await page.evaluate(() => {
             const player = window.plyrPlayer;
-            return player && player.plyr && player.plyr.embed;
+            return player && typeof player.currentTime === "number";
         });
         assert.ok(playerReady, "Player should be ready for autoplay test");
 

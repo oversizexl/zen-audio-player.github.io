@@ -123,13 +123,13 @@ describe("Page Structure", async function() {
             const relValue = await link.getAttribute("rel");
             const hrefValue = await link.getAttribute("href");
 
-            if (relValue === preloadStylesheet && hrefValue.match(/https:\/\/unpkg\.com\/primer-css@[~^]?\d.+\/css\/primer\.css/)) {
+            if (relValue === preloadStylesheet && hrefValue.match(/https:\/\/unpkg\.com\/primer-css@[~^]?\d.+\/(css\/primer\.css|build\/build\.css)/)) {
                 foundPrimerCSS = true;
             }
             if (relValue === preloadStylesheet && hrefValue.match(/https:\/\/unpkg\.com\/font-awesome@[~^]?\d.+\/css\/font-awesome\.min\.css/)) {
                 foundFontAwesome = true;
             }
-            if (relValue === preloadStylesheet && hrefValue.match(/https:\/\/unpkg\.com\/plyr@[~^]?\d.+\/dist\/plyr\.css/)) {
+            if (relValue === preloadStylesheet && hrefValue.match(/https:\/\/unpkg\.com\/plyr@\d+\.\d+\.\d+\/dist\/plyr\.css/)) {
                 foundPlyrCSS = true;
             }
             if (relValue === preloadStylesheet && hrefValue.endsWith("css/styles.css")) {
@@ -155,7 +155,7 @@ describe("Page Structure", async function() {
         assert.ok(fs.existsSync(imgFolderPath) + "zen-audio-player-453.png");
         assert.ok(fs.existsSync(imgFolderPath) + "zen-audio-player-905.png");
 
-        assert.equal(await getProperty(page, "header > figure > a", "href"), "https://zen-audio-player.github.io/");
+        assert.equal(await getProperty(page, "header > figure > a", "href"), "/");
         assert.ok((await getProperty(page, "header > figure > a.zen-logo > img.img-100", "src")).indexOf("img/zen-audio-player-905.png") !== -1);
         assert.equal(await getProperty(page, "header > figure > a.zen-logo > img.img-100", "alt"), "Zen Audio Player logo");
 
@@ -169,36 +169,54 @@ describe("Page Structure", async function() {
         assert.ok(await page.$("header > figure"), "Couldn't find <header><figure>");
         assert.ok(await page.$("header > figure > a"), "Couldn't find <header><figure><a>");
         assert.ok(await page.$("header > figure > a.zen-logo > img.img-100"), "Couldn't find <header><figure><a><img>");
-        assert.ok(await page.$("#form"), "Couldn't find #form");
+        assert.ok(await page.$(".search-form"), "Couldn't find .search-form");
 
         // Validate form structure and elements
-        assert.ok(await page.$("#v"), "Couldn't find #v input");
-        assert.ok(await page.$("#submit"), "Couldn't find #submit button");
-        assert.ok(await page.$("#zen-error"), "Couldn't find #zen-error element");
+        assert.ok(await page.$(".search-input"), "Couldn't find .search-input");
+        assert.ok(await page.$(".search-submit"), "Couldn't find .search-submit");
+        assert.ok(await page.$(".error-message"), "Couldn't find .error-message element");
+
+        // Validate warning message presence and base styling
+        const warningMessage = await page.$(".warning-message");
+        assert.ok(warningMessage, "Couldn't find .warning-message element");
+
+        const warningClassName = await getProperty(page, ".warning-message", "class");
+        assert.ok(
+            warningClassName && warningClassName.includes("warning-message"),
+            "Warning message should have the .warning-message class"
+        );
+        assert.ok(
+            warningClassName.includes("flash"),
+            "Warning message should use the base flash styling class"
+        );
+        assert.ok(
+            warningClassName.includes("flash-warn"),
+            "Warning message should use the warning flash styling class"
+        );
         
         // Validate form attributes
-        const input = await page.$("#v");
-        assert.equal(await getProperty(page, "#v", "name"), "v", "Input field should have name='v'");
-        assert.equal(await getProperty(page, "#v", "type"), "text", "Input field should be type='text'");
-        assert.ok((await getProperty(page, "#v", "placeholder") || "").includes("Search"), "Input should have search placeholder");
+        const input = await page.$(".search-input");
+        assert.equal(await getProperty(page, ".search-input", "name"), "v", "Input field should have name='v'");
+        assert.equal(await getProperty(page, ".search-input", "type"), "text", "Input field should be type='text'");
+        assert.ok((await getProperty(page, ".search-input", "placeholder") || "").includes("Search"), "Input should have search placeholder");
 
         // Validate submit button
-        assert.ok(await page.$("#submit"), "Couldn't find #submit");
+        assert.ok(await page.$(".search-submit"), "Couldn't find .search-submit");
         // Submit button may not have type attribute (that's acceptable)
 
         // Validate error element styling
-        const errorElement = await page.$("#zen-error");
+        const errorElement = await page.$(".error-message");
         assert.ok(errorElement, "Error element should exist");
         assert.ok((await errorElement.getAttribute("class") || "").includes("flash"), "Error element should have flash class");
         assert.ok((await errorElement.getAttribute("class") || "").includes("flash-error"), "Error element should have flash-error class");
 
-        assert.ok(await page.$("#demo"), "Couldn't find #demo");
-        assert.ok(await page.$("#submit"), "Couldn't find #submit");
-        assert.ok(await page.$("#zen-error"), "Couldn't find #zen-error");
-        assert.ok(await page.$("#zen-video-title"), "Couldn't find #zen-video-title");
-        assert.ok(await page.$("h3 > a#zen-video-title"), "Couldn't find a h3 > a#zen-video-title");
-        assert.ok(await page.$("#audioplayer"), "Couldn't find #audioplayer");
-        assert.ok(await page.$("#audioplayer > div.plyr"), "Couldn't find #audioplayer > div.plyr");
+        assert.ok(await page.$(".demo-button"), "Couldn't find .demo-button");
+        assert.ok(await page.$(".search-submit"), "Couldn't find .search-submit");
+        assert.ok(await page.$(".error-message"), "Couldn't find .error-message");
+        assert.ok(await page.$(".video-title"), "Couldn't find .video-title");
+        assert.ok(await page.$("h3 > a.video-title"), "Couldn't find a h3 > a.video-title");
+        assert.ok(await page.$(".audio-player"), "Couldn't find .audio-player");
+        assert.ok(await page.$(".audio-player .plyr, .audio-player video"), "Couldn't find player element under .audio-player");
 
         assert.ok(await page.$("footer"), "Couldn't find footer");
         assert.ok(await page.$("footer > div.color-grey > p"), "Couldn't find footer > div.color-grey <p>Created by");

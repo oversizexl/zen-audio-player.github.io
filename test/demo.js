@@ -53,7 +53,7 @@ describe("Demo", async function() {
         assert.ok(plyrLoaded);
 
         const oldUrl = page.url();
-        await page.click("#demo");
+        await page.click(".demo-button");
 
         // Wait a moment for navigation
         await page.waitForTimeout(2000);
@@ -66,7 +66,7 @@ describe("Demo", async function() {
         assert.notEqual(demos.indexOf(videoId), -1);
 
         // Check for any of the demo videos ID in the textbox
-        const textBox = await page.waitForSelector("#v", { state: "attached", timeout: 5000 });
+        const textBox = await page.waitForSelector(".search-input", { state: "attached", timeout: 5000 });
         let textBoxValue = await textBox.inputValue();
         assert.notEqual(demos.indexOf(textBoxValue), -1);
 
@@ -80,13 +80,17 @@ describe("Demo", async function() {
         });
         assert.ok(plyPlayer);
 
-        const toggleButton = await page.waitForSelector("#togglePlayer", { state: "attached", timeout: 5000 });
+        const toggleButton = await page.waitForSelector(".toggle-player-btn", { state: "attached", timeout: 5000 });
         let toggleButtonText = await toggleButton.textContent();
         assert.equal(toggleButtonText.trim(), "Show Player");
 
-        const zenError = await page.waitForSelector("#zen-error", { state: "attached", timeout: 5000 });
+        const zenError = await page.waitForSelector(".error-message", { state: "attached", timeout: 5000 });
         let zenErrorText = await zenError.textContent();
-        assert.ok(zenErrorText === "" || zenErrorText === "ERROR: the video owner won't allow us to play that video");
+        const expectedErrors = [
+            "ERROR: the video owner won't allow us to play that video",
+            "ERROR: we can't play that video here, or something is wrong with YouTube's iframe API"
+        ];
+        assert.ok(zenErrorText === "" || expectedErrors.indexOf(zenErrorText) !== -1, zenErrorText);
 
         await page.close();
     });

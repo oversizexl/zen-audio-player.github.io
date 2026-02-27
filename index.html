@@ -1,6 +1,5 @@
 <!doctype html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8">
     <meta name="description" content="Listen to YouTube videos, without the distracting visuals">
@@ -9,34 +8,32 @@
     <meta name="google-site-verification" content="D3SjNR3tmNYOusESQijh_oH5SGmU9QsAIVwlqizwRBU" />
 
     <title>Zen Audio Player</title>
+    <!-- TODO: open graph and full favicon package -->
 
     <link rel="shortcut icon" href="img/favicon.ico" type="image/x-icon">
     <link rel="icon" href="img/favicon.ico" type="image/x-icon">
 
-    <link rel="preload stylesheet" as="style" href="https://unpkg.com/primer-css@3.x.x/css/primer.css">
-    <link rel="preload stylesheet" as="style" href="https://unpkg.com/font-awesome@~4.4.0/css/font-awesome.min.css">
-    <link rel="preload stylesheet" as="style" href="https://unpkg.com/plyr@1.6.x/dist/plyr.css">
+    <link rel="preload stylesheet" as="style" href="https://unpkg.com/primer-css@9.6.0/build/build.css">
+    <link rel="preload stylesheet" as="style" href="https://unpkg.com/font-awesome@4.7.0/css/font-awesome.min.css">
+    <link rel="preload stylesheet" as="style" href="https://unpkg.com/plyr@3.8.4/dist/plyr.css">
     <link rel="preload stylesheet" as="style" href="css/styles.css">
 
-
     <script type="text/javascript">window._trackJs = { token: "f58d0b7c4b4248939fddc582f9e55c9d" };</script>
-    <script src="https://unpkg.com/trackjs@~2.10.1/tracker.js"></script>
-    <script src="https://unpkg.com/jquery@~1.11.x/dist/jquery.min.js"></script>
-    <script src="https://unpkg.com/bootstrap-slider/dist/bootstrap-slider.min.js"></script>
-    <script src="https://unpkg.com/corejs-typeahead@~0.11.1/dist/typeahead.jquery.min.js"></script>
-    <script src="https://unpkg.com/urijs@1.18.1/src/URI.min.js"></script>
-    <script src="https://unpkg.com/plyr@1.6.x/dist/plyr.js"></script>
-    <script src="https://unpkg.com/dompurify@^3.1.0/dist/purify.min.js"></script>
+    <script src="https://unpkg.com/trackjs@3.10.4/index.umd.js"></script>
+    <script src="https://unpkg.com/jquery@3.7.1/dist/jquery.min.js"></script>
+    <script src="https://unpkg.com/corejs-typeahead@1.3.4/dist/typeahead.jquery.min.js"></script>
+    <script src="https://unpkg.com/urijs@1.19.11/src/URI.min.js"></script>
+    <script src="https://unpkg.com/plyr@3.8.4/dist/plyr.polyfilled.min.js"></script>
+    <script src="https://unpkg.com/dompurify@3.3.1/dist/purify.min.js"></script>
 
-    <!-- Global site tag (gtag.js) - Google Analytics -->
     <script src="https://www.googletagmanager.com/gtag/js?id=UA-62983413-1"></script>
     <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag("js", new Date());
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag("js", new Date());
 
-      gtag("config", "UA-62983413-1");
-      gtag("send", "pageview");
+        gtag("config", "UA-62983413-1");
+        gtag("send", "pageview");
     </script>
 
     <script src="js/zap-common.js"></script>
@@ -45,9 +42,8 @@
 
 <body>
     <header>
-        <!-- The logo & description -->
         <figure>
-            <a href="https://zen-audio-player.github.io/" title="Zen Audio Player" class="zen-logo">
+            <a href="/" title="Zen Audio Player" class="zen-logo">
                 <img src="img/zen-audio-player-905.png" class="img-100" alt="Zen Audio Player logo">
             </a>
         </figure>
@@ -55,81 +51,74 @@
         <hgroup>
             <h1>Zen Audio Player</h1>
             <h2 class="color-grey">Listen to YouTube videos, without the distracting visuals.</h2>
-            <h2 class="color-grey hide flash" id="mobile-message"></h2>
+            <h2 class="color-grey hide flash mobile-message"></h2>
         </hgroup>
     </header>
-    <div id="container">
-        <!-- The form -->
-        <form id="form">
+    <main>
+        <form class="search-form">
             <div class="input-group">
-                <input type="text" id="v" name="v" class="input-search color-grey"
+                <input type="text" name="v" class="input-search search-input color-grey"
                     placeholder="Search, YouTube video ID, or URL">
                 <span class="input-group-button">
-                    <button class="btn btn-search" id="submit">
+                    <button class="btn btn-search search-submit">
                         <i class="fa fa-search"></i>
                     </button>
                 </span>
             </div>
         </form>
-        <div id="search-results">
+        <div class="search-results">
             <h3>Search Results</h3>
             <ul></ul>
         </div>
-        <div id="zen-error" class="hide flash flash-error"></div>
-        <!-- The video, along with related content & messages -->
-        <div id="audioplayer">
+        <div class="hide flash flash-warn warning-message"></div>
+        <div class="hide flash flash-error error-message"></div>
+
+        <div class="audio-player">
             <h3>
-                <a id="zen-video-title" class="plyr__cite plyr__cite--video"></a>
+                <a class="plyr__cite plyr__cite--video video-title"></a>
             </h3>
 
-            <div id="playerControls">
-                <button class="btn" id="togglePlayer">
+            <div class="player-controls">
+                <button class="btn toggle-player-btn">
                     Show Player
                 </button>
-                <button class="btn" id="toggleDescription">
+                <button class="btn toggle-description-btn">
                     Show Description
                 </button>
-                <button class="btn" id="toggleAutoplay">
+                <button class="btn toggle-autoplay-btn">
                     Autoplay
                 </button>
-                <button class="btn" id="toggleRepeat">
+                <button class="btn toggle-repeat-btn">
                     Repeat Track
                 </button>
             </div>
 
-            <!-- Plyr controls' icons and Plyr player itself -->
-            <div id="plyr-svg" hidden>
-            </div>
-            <div class="plyr">
-                <audio></audio>
-            </div>
+            <div class="plyr-svg" hidden></div>
+            <video class="plyr"></video>
             <br>
-            <div id="zen-video-description"></div>
+            <div class="video-description"></div>
             <br>
         </div>
-        <button id="demo" class="btn">
+        <button class="btn demo-button">
             <i class="fa fa-mouse-pointer"></i>
             Click for Demo
         </button>
 
         <div class="fav-panel">
             <br>
-            <button class="btn" id="focus-btn">
+            <button class="btn focus-btn">
                 <i class="fa fa-headphones"></i>
                 Focus
             </button>
-            <button class="btn" id="lofi-btn">
+            <button class="btn lofi-btn">
                 <i class="fa fa-headphones"></i>
                 Lofi
             </button>
         </div>
-    </div>
-    <!-- footer -->
+    </main>
     <footer>
-        <!-- Twitter hashtag button: #ZenAudioPlayer -->
-        <div id="tweetButton"></div>
+        <div class="tweet-button"></div>
         <script>!function (d, s, id) { var js, fjs = d.getElementsByTagName(s)[0], p = /^http:/.test(d.location) ? "http" : "https"; if (!d.getElementById(id)) { js = d.createElement(s); js.id = id; js.src = p + "://platform.twitter.com/widgets.js"; fjs.parentNode.insertBefore(js, fjs); } }(document, "script", "twitter-wjs");</script>
-        <!-- Attribution, and links -->
         <div class="color-grey">
             <p>Created by <a href="https://twitter.com/_Shakeel" target="_blank">@_Shakeel</a> and <a
                     href="https://github.com/zen-audio-player/zen-audio-player.github.io/graphs/contributors"
@@ -138,10 +127,8 @@
                     target="_blank">Get the Chrome extension</a> - (<a
                     href="https://github.com/zen-audio-player/extension-chrome" target="_blank">source</a>)</p>
         </div>
-
         <br>
 
-        <!-- Sponsor links -->
         <h3>Sponsored by:</h3>
         <div class="sponsor">
             <a href="https://trackjs.com/" class="sponsor-a" target="_blank">
@@ -150,22 +137,20 @@
             <div class="clear-both"></div>
         </div>
 
-        <!-- social media icons -->
         <div class="repo-info">
             <br>
             <p>Source available on GitHub: <br><a href="https://github.com/zen-audio-player/zen-audio-player.github.io"
                     class="fa fa-github" target="_blank"></a></p>
         </div>
     </footer>
-    <!-- Schema.org structured data -->
+
     <script type="application/ld+json">
         {
             "@context": "http://schema.org",
             "@type": "Organization",
-            "url": "https://zenplayer.audio",
-            "logo": "https://zenplayer.audio/img/zen-audio-player-905.png"
+            "url": "https://zen-audio-player.github.io",
+            "logo": "https://zen-audio-player.github.io/img/zen-audio-player-905.png"
         }
     </script>
 </body>
-
 </html>

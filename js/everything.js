@@ -1,4 +1,4 @@
-/* global gtag, URI, DOMPurify, getSearchResults, getAutocompleteSuggestions, parseYoutubeVideoID, getYouTubeVideoDescription */
+/* global gtag, URI, DOMPurify, getSearchResults, getAutocompleteSuggestions, parseYoutubeVideoID, getYouTubeVideoDescription, Plyr */
 
 var keyCodes = {
     SPACEBAR: 32,
@@ -23,12 +23,10 @@ var autoplayState = false;
 const MAX_TAGS = 10;
 
 var errorMessage = {
-    init: function() {
-        // nothing for now
-    },
+    init: function() {},
     show: function(message) {
-        $("#zen-error").text("ERROR: " + message);
-        $("#zen-error").show();
+        $(".error-message").text("ERROR: " + message);
+        $(".error-message").show();
 
         // Pause if we got an error
         ZenPlayer.pause();
@@ -40,23 +38,46 @@ var errorMessage = {
         gtag("send", "event", "error", message);
     },
     hide: function() {
-        $("#zen-error").text("").hide();
+        $(".error-message").text("").hide();
         ZenPlayer.show();
     }
 };
 
-/**
- * Are we serving the file over file://
- * @returns {boolean}
- */
+var warningMessage = {
+    init: function() {},
+    show: function(message) {
+        $(".warning-message").text("WARNING: " + message).show();
+
+        // Send warning to Google Analytics
+        gtag("send", "event", "warning", message);
+    },
+    hide: function() {
+        $(".warning-message").text("").hide();
+    }
+};
+
 function isFileProtocol() {
     return URI(window.location).protocol() === "file";
 }
 
+function isLocalDevelopment() {
+    const hostname = (window.location && window.location.hostname) || "";
+    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+}
+
+function shouldSkipYouTubeDataApi() {
+    const searchParams = URI(window.location).search(true);
+    const forceApi = searchParams.ytApi === "1";
+    if (forceApi) {
+        return false;
+    }
+    return isFileProtocol() || isLocalDevelopment();
+}
+
 function handleYouTubeError(details) {
     if (typeof details.code === "number") {
-        var message = "Got an unknown error, check the JS console.";
-        var verboseMessage = message;
+        let message = "Got an unknown error, check the JS console.";
+        let verboseMessage = message;
 
         // Handle the different error codes
         switch (details.code) {
@@ -91,203 +112,290 @@ function handleYouTubeError(details) {
     }
 }
 
+function getPlayerDuration() {
+    if (plyrPlayer && typeof plyrPlayer.duration === "number" && !isNaN(plyrPlayer.duration)) {
+        return plyrPlayer.duration;
+    }
+
+    return 0;
+}
+
+function getPlayerCurrentTime() {
+    if (plyrPlayer && typeof plyrPlayer.currentTime === "number" && !isNaN(plyrPlayer.currentTime)) {
+        return plyrPlayer.currentTime;
+    }
+
+    return 0;
+}
+
+function seekPlayerTo(seconds) {
+    if (!plyrPlayer || typeof seconds !== "number" || isNaN(seconds)) {
+        return;
+    }
+
+    if (typeof plyrPlayer.currentTime === "number") {
+        plyrPlayer.currentTime = seconds;
+    }
+}
+
+function getPlayerVideoData() {
+    return {
+        title: ZenPlayer.videoTitle || currentVideoID || "",
+        author: ZenPlayer.videoAuthor || ""
+    };
+}
+
+function getPlayerVideoUrl() {
+    if (currentVideoID) {
+        return "https://www.youtube.com/watch?v=" + currentVideoID;
+    }
+
+    return "https://www.youtube.com";
+}
+
+function fetchOEmbedVideoTitle(videoID, onSuccess) {
+    if (!videoID || typeof onSuccess !== "function") {
+        return;
+    }
+
+    $.ajax({
+        url: "https://www.youtube.com/oembed",
+        dataType: "json",
+        data: {
+            url: "https://www.youtube.com/watch?v=" + videoID,
+            format: "json"
+        },
+        success: function(data) {
+            if (data && data.title && data.title.trim().length > 0) {
+                onSuccess(data.title);
+            }
+        }
+    }).fail(function() {
+        // Best effort only; keep current title fallback when this fails.
+    });
+}
+
 // One day, try to move all globals under the ZenPlayer object
 var ZenPlayer = {
     updated: false,
     isPlaying: false,
     isRepeat: false,
 
-    init: function(videoID) {
+    init: function() {
         // Inject svg with control icons
-        $("#plyr-svg").load("https://unpkg.com/plyr@1.6.x/dist/plyr.svg");
+        $(".plyr-svg").load("https://unpkg.com/plyr@3.8.4/dist/plyr.svg");
 
-        plyrPlayer = document.querySelector(".plyr");
+        const playerEl = document.querySelector(".plyr");
+        if (!playerEl) {
+            console.log("Plyr element not found; skipping player initialization.");
+            return;
+        }
 
-        plyr.setup(plyrPlayer, {
+        playerEl.disablePictureInPicture = true;
+
+        plyrPlayer = new Plyr(playerEl, {
             autoplay: true,
             controls: ["play", "progress", "current-time", "duration", "mute", "volume"],
-            hideControls: false
+            hideControls: false,
+            pip: false
         });
 
-        // Load video into Plyr player
-        if (plyrPlayer.plyr) {
-            var that = this;
-            plyrPlayer.addEventListener("error", function(event) {
-                if (event && event.detail && typeof event.detail.code === "number") {
-                    handleYouTubeError(event.detail);
-                    ZenPlayer.hide();
-                }
-            });
-
-            plyrPlayer.addEventListener("ready", function() {
-                // Noop if we have nothing to play
-                if (!currentVideoID || currentVideoID.length === 0) {
-                    return;
-                }
-
-                // gtagther video info
-                that.videoTitle = plyrPlayer.plyr.embed.getVideoData().title;
-                that.videoAuthor = plyrPlayer.plyr.embed.getVideoData().author;
-                that.videoDuration = plyrPlayer.plyr.embed.getDuration();
-                that.videoDescription = that.getVideoDescription(videoID);
-                that.videoUrl = plyrPlayer.plyr.embed.getVideoUrl();
-
-                // Updates the time position by a given argument in URL
-                // IE https://zenplayer.audio/?v=koJv-j1usoI&t=30 starts at 0:30
-                var t = getCurrentTimePosition();
-                if (t) {
-                    that.videoPosition = t;
-                    window.sessionStorage[videoID] = t;
-                }
-
-                // Initialize UI
-                that.setupTitle();
-                that.setupVideoDescription(videoID);
-                that.setupPlyrToggle();
-                that.setupAutoplayToggle();
-            });
-
-            plyrPlayer.addEventListener("playing", function() {
-                var videoDuration = plyrPlayer.plyr.embed.getDuration();
-                if (that.updated || videoDuration === 0) {
-                    return;
-                }
-
-                // Start video from where we left off, if it makes sense
-                if (window.sessionStorage && videoID in window.sessionStorage) {
-                    var resumeTime = window.sessionStorage[videoID];
-                    if (!isNaN(resumeTime) && resumeTime < videoDuration - 3) {
-                        plyrPlayer.plyr.embed.seekTo(resumeTime);
-                    }
-                }
-
-                that.updated = true;
-
-                // Analytics
-                gtag("send", "event", "Playing YouTube video title", that.videoTitle);
-                gtag("send", "event", "Playing YouTube video author", that.videoAuthor);
-                gtag("send", "event", "Playing YouTube video duration (seconds)", that.videoDuration);
-
-                // Show player
-                that.show();
-                updateTweetMessage();
-            });
-
-            // when player has finished playing
-            plyrPlayer.addEventListener("ended", function() {
-                if (autoplayState) {
-                    if (playList.length === 0 || playList.size === 0) {
-                        fetchSuggestedVideoIds();
-                    }
-                    var newId = getNewVideoID();
-                    that.playNext(newId);
-                }
-            });
-
-            plyrPlayer.addEventListener("timeupdate", function() {
-                // Nothing is playing
-                if (!plyrPlayer.plyr || !plyrPlayer.plyr.embed) {
-                    return;
-                }
-
-                // Store the current time of the video.
-                var resumeTime = 0;
-                var videoDuration = plyrPlayer.plyr.embed.getDuration();
-                if (window.sessionStorage && videoDuration > 0) {
-                    var currentTime = plyrPlayer.plyr.embed.getCurrentTime();
-                    /**
-                     * Only store the current time if the video isn't done
-                     * playing yet. If the video finished already, then it
-                     * should start off at the beginning next time.
-                     * There is a fuzzy 3 seconds because sometimes the video
-                     * will end a few seconds before the video duration.
-                     */
-                    if (currentTime < videoDuration - 3) {
-                        resumeTime = currentTime;
-                    }
-                    // check time and if isRepeat == true
-                    if (currentTime >= videoDuration && that.isRepeat) {
-                        resumeTime = 0;
-                        plyrPlayer.plyr.embed.seekTo(resumeTime);
-                        ZenPlayer.play();
-                    }
-                    window.sessionStorage[videoID] = resumeTime;
-                }
-                var updatedUrl = that.videoUrl;
-                if (resumeTime > 0) {
-                    updatedUrl = that.videoUrl + "&t=" + Math.round(resumeTime);
-                    $("#zen-video-title").attr("href", updatedUrl);
-                }
-                else if (resumeTime <= 0 && $("#zen-video-title").attr("href") !== that.videoUrl) {
-                    updatedUrl = that.videoUrl;
-                }
-                $("#zen-video-title").attr("href", updatedUrl);
-            });
-
-            plyrPlayer.addEventListener("playing", function() {
-                this.isPlaying = true;
-            }.bind(this));
-
-            plyrPlayer.addEventListener("pause", function() {
-                this.isPlaying = false;
-            }.bind(this));
-
-            plyrPlayer.plyr.source({
+        // Set source immediately after creating the player when we have a video id
+        if (currentVideoID) {
+            plyrPlayer.source = {
                 type: "video",
                 title: "Title",
                 sources: [{
                     src: currentVideoID,
-                    type: "youtube"
+                    provider: "youtube"
                 }]
-            });
+            };
         }
+
+        const that = this;
+
+        plyrPlayer.on("error", function(event) {
+            if (event && event.detail && typeof event.detail.code === "number") {
+                handleYouTubeError(event.detail);
+                ZenPlayer.hide();
+                return;
+            }
+
+            errorMessage.show("we couldn't start playback. Please try another video or reload the page.");
+            console.log("Plyr error event details:", event && event.detail ? event.detail : event);
+            ZenPlayer.hide();
+        });
+
+        plyrPlayer.on("ready", function() {
+            // Noop if we have nothing to play
+            if (!currentVideoID || currentVideoID.length === 0) {
+                return;
+            }
+
+            // Gather video info
+            that.videoTitle = currentVideoID;
+            that.videoAuthor = "";
+            that.videoDuration = getPlayerDuration();
+            that.videoDescription = that.getVideoDescription(currentVideoID);
+            that.videoUrl = getPlayerVideoUrl();
+
+            // Updates the time position by a given argument in URL
+            // I.e. https://zenplayer.audio/?v=koJv-j1usoI&t=30 starts at 0:30
+            const t = getCurrentTimePosition();
+            if (t) {
+                that.videoPosition = t;
+                window.sessionStorage[currentVideoID] = t;
+            }
+
+            // Initialize UI
+            that.setupTitle();
+            that.setupVideoDescription(currentVideoID);
+            that.setupPlyrToggle();
+            that.setupAutoplayToggle();
+
+            fetchOEmbedVideoTitle(currentVideoID, function(title) {
+                that.videoTitle = title;
+                that.setupTitle();
+            });
+        });
+
+        plyrPlayer.on("playing", function() {
+            if (that.updated) {
+                return;
+            }
+
+            const videoDuration = getPlayerDuration();
+            // Start video from where we left off, if it makes sense
+            if (window.sessionStorage && currentVideoID in window.sessionStorage) {
+                const resumeTime = window.sessionStorage[currentVideoID];
+                if (!isNaN(resumeTime) && videoDuration > 0 && resumeTime < videoDuration - 3) {
+                    seekPlayerTo(resumeTime);
+                }
+            }
+
+            that.updated = true;
+
+            // Analytics
+            gtag("send", "event", "Playing YouTube video title", that.videoTitle);
+            gtag("send", "event", "Playing YouTube video author", that.videoAuthor);
+            gtag("send", "event", "Playing YouTube video duration (seconds)", that.videoDuration);
+
+            // Show player
+            that.show();
+            updateTweetMessage();
+        });
+
+        // when player has finished playing
+        plyrPlayer.on("ended", function() {
+            if (that.isRepeat) {
+                seekPlayerTo(0);
+                ZenPlayer.play();
+                return;
+            }
+
+            if (autoplayState) {
+                if (playList.length === 0 || playList.size === 0) {
+                    fetchSuggestedVideoIds();
+                }
+                const newId = getNewVideoID();
+                that.playNext(newId);
+            }
+        });
+
+        plyrPlayer.on("timeupdate", function() {
+            // Nothing is playing
+            if (!plyrPlayer) {
+                return;
+            }
+
+            // Store the current time of the video.
+            let resumeTime = 0;
+            const videoDuration = getPlayerDuration();
+            if (window.sessionStorage && videoDuration > 0) {
+                const currentTime = getPlayerCurrentTime();
+                /**
+                 * Only store the current time if the video isn't done
+                 * playing yet. If the video finished already, then it
+                 * should start off at the beginning next time.
+                 * There is a fuzzy 3 seconds because sometimes the video
+                 * will end a few seconds before the video duration.
+                 */
+                if (currentTime < videoDuration - 3) {
+                    resumeTime = currentTime;
+                }
+                // check time and if isRepeat == true
+                if (currentTime >= videoDuration && that.isRepeat) {
+                    resumeTime = 0;
+                    seekPlayerTo(resumeTime);
+                    ZenPlayer.play();
+                }
+                window.sessionStorage[currentVideoID] = resumeTime;
+            }
+            let updatedUrl = that.videoUrl;
+            if (resumeTime > 0) {
+                updatedUrl = that.videoUrl + "&t=" + Math.round(resumeTime);
+                $(".video-title").attr("href", updatedUrl);
+            }
+            else if (resumeTime <= 0 && $(".video-title").attr("href") !== that.videoUrl) {
+                updatedUrl = that.videoUrl;
+            }
+            $(".video-title").attr("href", updatedUrl);
+        });
+
+        plyrPlayer.on("playing", function() {
+            that.isPlaying = true;
+        });
+
+        plyrPlayer.on("pause", function() {
+            that.isPlaying = false;
+        });
     },
     // play next song from autoplay
     playNext: function(videoID) {
-        $("#v").val(videoID);
-        $("#form").submit();
+        $(".search-input").val(videoID);
+        $(".search-form").submit();
     },
     show: function() {
-        $("#audioplayer").show();
+        $(".audio-player").show();
         // Hide the demo link as some video is playing
-        $("#demo").hide();
+        $(".demo-button").hide();
     },
     hide: function() {
-        $("#audioplayer").hide();
+        $(".audio-player").hide();
         // Show the demo link as no video is playing
-        $("#demo").show();
+        $(".demo-button").show();
     },
     setupTitle: function() {
         // Prepend music note only if title does not already begin with one.
-        var tmpVideoTitle = this.videoTitle;
+        let tmpVideoTitle = this.videoTitle;
         if (!/^[\u2669\u266A\u266B\u266C\u266D\u266E\u266F]/.test(tmpVideoTitle)) {
             tmpVideoTitle = "<i class=\"fa fa-music\"></i> " + tmpVideoTitle;
         }
-        $("#zen-video-title").html(DOMPurify.sanitize(tmpVideoTitle));
-        $("#zen-video-title").attr("href", this.videoUrl);
+        $(".video-title").html(DOMPurify.sanitize(tmpVideoTitle));
+        $(".video-title").attr("href", this.videoUrl);
     },
     setupVideoDescription: function(videoID) {
-        var description = anchorURLs(this.videoDescription);
+        let description = anchorURLs(this.videoDescription);
         description = anchorTimestamps(description, videoID);
-        $("#zen-video-description").html(DOMPurify.sanitize(description));
-        $("#zen-video-description").hide();
+        $(".video-description").html(DOMPurify.sanitize(description));
+        $(".video-description").hide();
 
-        $("#toggleDescription").click(function(event) {
-            toggleElement(event, "#zen-video-description", "Description");
+        $(".toggle-description-btn").click(function(event) {
+            toggleElement(event, ".video-description", "Description");
         });
     },
     setupPlyrToggle: function() {
         // Show player button click event
-        $("#togglePlayer").click(function(event) {
+        $(".toggle-player-btn").off("click").on("click", function(event) {
             toggleElement(event, ".plyr__video-wrapper", "Player");
         });
     },
     setupAutoplayToggle: function() {
         // toggle auto next song playing
-        $("#toggleAutoplay").click(function(event) {
-            var toggleTextElement = $("#" + event.currentTarget.id);
-            toggleTextElement.toggleClass("toggleAutoplayActive");
-            var active = toggleTextElement.hasClass("toggleAutoplayActive");
+        $(".toggle-autoplay-btn").click(function(event) {
+            const toggleTextElement = $(event.currentTarget);
+            toggleTextElement.toggleClass("toggle-autoplay-active");
+            const active = toggleTextElement.hasClass("toggle-autoplay-active");
             if (active) {
                 toggleTextElement.html("&#10004; Autoplay");
                 autoplayState = true;
@@ -303,11 +411,11 @@ var ZenPlayer = {
     },
 
     getVideoDescription: function(videoID) {
-        var description = "";
+        let description = "";
 
-        if (isFileProtocol()) {
+        if (shouldSkipYouTubeDataApi()) {
             console.log("Skipping video description request as we're running the site locally.");
-            $("#toggleDescription").hide();
+            $(".toggle-description-btn").hide();
         }
         else {
             getYouTubeVideoDescription(
@@ -330,16 +438,20 @@ var ZenPlayer = {
 
         // If there's no description to show, don't pretend there is
         if (description.trim().length === 0) {
-            $("#toggleDescription").hide();
+            $(".toggle-description-btn").hide();
         }
 
         return description;
     },
     play: function() {
-        plyrPlayer.plyr.embed.playVideo();
+        if (plyrPlayer && typeof plyrPlayer.play === "function") {
+            plyrPlayer.play();
+        }
     },
     pause: function() {
-        plyrPlayer.plyr.embed.pauseVideo();
+        if (plyrPlayer && typeof plyrPlayer.pause === "function") {
+            plyrPlayer.pause();
+        }
     }
 };
 
@@ -347,54 +459,70 @@ var ZenPlayer = {
  * Create a twitter message with current song if we have one.
  */
 function updateTweetMessage() {
-    var url = URI("https://zen-audio-player.github.io");
+    const url = URI("https://zen-audio-player.github.io");
 
-    var opts = {
+    const opts = {
         text: "Listen to YouTube videos without the distracting visuals",
         hashTags: "ZenAudioPlayer",
         url: url.toString()
     };
 
-    var id = getCurrentVideoID();
+    const id = getCurrentVideoID();
     if (id) {
         url.setSearch("v", id);
         opts.url = url.toString();
-        opts.text = "I'm listening to " + plyrPlayer.plyr.embed.getVideoData().title;
+        opts.text = "I'm listening to " + getPlayerVideoData().title;
     }
 
     twttr.widgets.createHashtagButton(
         "ZenAudioPlayer",
-        document.getElementById("tweetButton"),
+        document.querySelector(".tweet-button"),
         opts
     );
 }
 
 function logError(jqXHR, textStatus, errorThrown, _errorMessage) {
-    var responseText = JSON.parse(jqXHR.error().responseText);
-    errorMessage.show(responseText.error.errors[0].message);
+    let parsedResponse;
+    let message = "Something went wrong while contacting YouTube.";
+
+    if (jqXHR && jqXHR.responseJSON) {
+        parsedResponse = jqXHR.responseJSON;
+    }
+    else if (jqXHR && typeof jqXHR.responseText === "string") {
+        try {
+            parsedResponse = JSON.parse(jqXHR.responseText);
+        }
+        catch (_parseError) {
+            void _parseError;
+            parsedResponse = null;
+        }
+    }
+
+    if (parsedResponse && parsedResponse.error && parsedResponse.error.errors && parsedResponse.error.errors[0] && parsedResponse.error.errors[0].message) {
+        message = parsedResponse.error.errors[0].message;
+    }
+    else if (errorThrown) {
+        message = errorThrown;
+    }
+    else if (textStatus) {
+        message = textStatus;
+    }
+
+    errorMessage.show(message);
     console.log(_errorMessage, errorThrown);
 }
 
-function toggleElement(event, toggleID, buttonText) {
+function toggleElement(event, selector, buttonText) {
     event.preventDefault();
 
-    var toggleElement = $(toggleID);
-    toggleElement.toggle("fast");
-
-    var toggleTextElement = $("#" + event.currentTarget.id);
-
-    if (toggleElement.is(":visible")) {
-        // Check for current state(Hide/Show) and toggle it
-        if (toggleTextElement.is(":contains(Hide)")) {
-            toggleTextElement.text("Show " + buttonText);
-        }
-        else if (toggleTextElement.is(":contains(Show)")) {
-            toggleTextElement.text("Hide " + buttonText);
-        }
+    const targetElement = $(selector);
+    if (!targetElement.length) {
+        return;
     }
-    else {
-        toggleTextElement.text("Show " + buttonText);
-    }
+    const toggleTextElement = $(event.currentTarget);
+    targetElement.toggle("fast", function() {
+        toggleTextElement.text((targetElement.is(":visible") ? "Hide " : "Show ") + buttonText);
+    });
 }
 
 /**
@@ -403,10 +531,10 @@ function toggleElement(event, toggleID, buttonText) {
  * @return {string|null}
  */
 function getCurrentVideoID() {
-    var v = URI(window.location).search(true).v;
+    const v = URI(window.location).search(true).v;
 
     // If the URL has multiple v parameters, take parsing the last one (usually when ?v=someurl&v=xyz)
-    var r;
+    let r;
     if (Array.isArray(v)) {
         r = wrapParseYouTubeVideoID(v.pop());
     }
@@ -421,8 +549,8 @@ function getCurrentVideoID() {
  * @returns {Number}
  */
 function getCurrentTimePosition() {
-    var t = parseInt(URI(window.location).search(true).t, 10);
-    var timeContinue = parseInt(URI(window.location).search(true).time_continue, 10);
+    const t = parseInt(URI(window.location).search(true).t, 10);
+    const timeContinue = parseInt(URI(window.location).search(true).time_continue, 10);
     if (t > 0 && t < Number.MAX_VALUE) {
         return t;
     }
@@ -457,14 +585,11 @@ function cleanURL(url) {
  * @returns {string}
  */
 function makeListenURL(videoID, videoPosition) {
-    var url = cleanURL(window.location);
-
+    const url = cleanURL(window.location);
     url.setSearch("v", videoID);
-
     if (videoPosition) {
         url.setSearch("t", videoPosition);
     }
-
     return url.toString();
 }
 
@@ -484,9 +609,12 @@ function anchorURLs(text) {
     * Ends capture when:
     *    (1) it encounters a TLD
     *    (2) it encounters a period (.) or whitespace, if the TLD was followed by a forwardslash (/) */
-    var re = /((?:http|https)\:\/\/[a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,3}(?:\/\S*[^\.\s])?)/g; // eslint-disable-line no-useless-escape
-    /* Wraps all found URLs in <a> tags */
-    return text.replace(re, "<a href=\"$1\" target=\"_blank\">$1</a>");
+    const re = /((?:http|https)\:\/\/[a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,3}(?:\/\S*[^\.\s])?)/g; // eslint-disable-line no-useless-escape
+    /* Wraps all found URLs in <a> tags, do not encode display text */
+    return text.replace(re, function(u) {
+        const uEncoded = encodeURI(u);
+        return `<a href="${uEncoded}" target="_blank" rel="noopener noreferrer">${u}</a>`;
+    });
 }
 
 function anchorTimestamps(text, videoID) {
@@ -501,23 +629,24 @@ function anchorTimestamps(text, videoID) {
     (?:\d|\:[0-5]\d) either the string is "colon 0-9" or "colon 00-59"
     (?:$|\:[0-5]\d)) either the string ends or is a a number between 00-59
     */
-    var re = /((?:[0-5]\d|\d|)(?:\d|\:[0-5]\d)(?:$|\:[0-5]\d))/g; // eslint-disable-line no-useless-escape
+    const re = /((?:[0-5]\d|\d|)(?:\d|\:[0-5]\d)(?:$|\:[0-5]\d))/g; // eslint-disable-line no-useless-escape
     return text.replace(re, function(match) {
         return "<a href=\"" + makeListenURL(videoID, convertTimestamp(match)) + "\">" + match + "</a>";
     });
 }
 
 function convertTimestamp(timestamp) {
-    var seconds = 0;
-    var minutes = 0;
-    var hours = 0;
-    var timeComponents = timestamp.split(":");
+    let seconds;
+    let minutes;
+    let hours;
+    const timeComponents = timestamp.split(":");
     if (timeComponents.length === 3) {
         hours = convertHoursToSeconds(timeComponents[0]);
         minutes = convertMinutesToSeconds(timeComponents[1]);
         seconds = parseBase10Int(timeComponents[2]);
     }
     else {
+        hours = 0;
         minutes = convertMinutesToSeconds(timeComponents[0]);
         seconds = parseBase10Int(timeComponents[1]);
     }
@@ -542,8 +671,7 @@ function wrapParseYouTubeVideoID(url) {
         return currentVideoID;
     }
 
-    var info = parseYoutubeVideoID(url);
-
+    const info = parseYoutubeVideoID(url);
     if (info.id) {
         currentVideoID = info.id;
         gtag("send", "event", "video ID format", info.format);
@@ -572,20 +700,19 @@ function pickDemo() {
 }
 
 function updateAutoplayToggle(state) {
-    var toggleElement = $("#toggleAutoplay");
+    const toggleElement = $(".toggle-autoplay-btn");
     if (state) {
-        toggleElement.addClass("toggleAutoplayActive");
+        toggleElement.addClass("toggle-autoplay-active");
         toggleElement.html("&#10004; Autoplay");
     }
     else {
-        toggleElement.removeClass("toggleAutoplayActive");
+        toggleElement.removeClass("toggle-autoplay-active");
         toggleElement.html("Autoplay");
     }
 }
 
 function getNewVideoID() {
-    var nextID = null;
-    nextID = playList.pop();
+    let nextID = playList.pop();
     while (currentVideoID === nextID) {
         nextID = playList.pop();
     }
@@ -594,38 +721,34 @@ function getNewVideoID() {
 }
 
 function fetchSuggestedVideoIds() {
-    if (playList.length === 0 || playList.size === 0) {
-        if (tags.length) {
+    if ((playList.length === 0 || playList.size === 0) && tags.length && !shouldSkipYouTubeDataApi()) {
+        for (let index = 0; index < tags.length && index < MAX_TAGS; index++) {
             // get similar videos, populate playList
-            if (!isFileProtocol()) {
-                for (let index = 0; index < tags.length && index < MAX_TAGS; index++) {
-                    $.ajax({
-                        url: "https://www.googleapis.com/youtube/v3/search",
-                        dataType: "json",
-                        async: false,
-                        data: {
-                            key: youTubeDataApiKey,
-                            part: "snippet",
-                            type: "video",
-                            order: "relevance",
-                            q: tags[index],
-                            maxResults: 2
-                        },
-                        success: onRelatedVideoFetchSuccess
-                    }).fail(function(jqXHR, textStatus, errorThrown) {
-                        logError(jqXHR, textStatus, errorThrown, "Related video lookup error");
-                    });
-                }
-                playList = Array.from(playList);
-                window.sessionStorage.setItem("playList", JSON.stringify(playList));
-            }
+            $.ajax({
+                url: "https://www.googleapis.com/youtube/v3/search",
+                dataType: "json",
+                async: false,
+                data: {
+                    key: youTubeDataApiKey,
+                    part: "snippet",
+                    type: "video",
+                    order: "relevance",
+                    q: tags[index],
+                    maxResults: 2
+                },
+                success: onRelatedVideoFetchSuccess
+            }).fail(function(jqXHR, textStatus, errorThrown) {
+                logError(jqXHR, textStatus, errorThrown, "Related video lookup error");
+            });
         }
+        playList = Array.from(playList);
+        window.sessionStorage.setItem("playList", JSON.stringify(playList))
     }
 }
 
 function onRelatedVideoFetchSuccess(data) {
     // push items into playlist
-    for (var i = 0; i < data.items.length; i++) {
+    for (let i = 0; i < data.items.length; i++) {
         playList.add(data.items[i].id.videoId);
     }
 }
@@ -651,81 +774,94 @@ function resetAutoPlayList() {
 
 $(function() {
     if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-        $("#container").hide();
-        $("#mobile-message").html("Sorry, we don't support mobile devices.");
-        $("#mobile-message").show();
+        $("main").hide();
+        $(".mobile-message").html("Sorry, we don't support mobile devices.");
+        $(".mobile-message").show();
         return;
     }
 
     errorMessage.init();
+    warningMessage.init();
+
+    if (shouldSkipYouTubeDataApi()) {
+        warningMessage.show("YouTube Data API features are disabled on localhost to preserve quota. Paste a video URL or ID to play directly.");
+    }
 
     loadAutoPlayDetails();
 
     // How do we know if the value is truly invalid?
     // Preload the form from the URL
-    var currentVideoID = getCurrentVideoID();
+    const currentVideoID = getCurrentVideoID();
     if (currentVideoID) {
-        $("#v").attr("value", currentVideoID);
+        $(".search-input").attr("value", currentVideoID);
     }
     else {
-        var currentSearchQuery = getCurrentSearchQuery();
+        const currentSearchQuery = getCurrentSearchQuery();
         if (currentSearchQuery) {
-            $("#v").attr("value", currentSearchQuery);
-            getSearchResults(
-                currentSearchQuery,
-                youTubeDataApiKey,
-                function(data) {
-                    if (data.pageInfo.totalResults === 0) {
-                        errorMessage.show("No results.");
-                        return;
-                    }
-                    $("#search-results").show();
-                    // Clear out results
-                    $("#search-results ul").html("");
+            $(".search-input").attr("value", currentSearchQuery);
+            if (shouldSkipYouTubeDataApi()) {
+                warningMessage.show("Search is disabled on localhost to preserve YouTube API quota. Paste a video URL or ID to play directly.");
+            }
+            else {
+                getSearchResults(
+                    currentSearchQuery,
+                    youTubeDataApiKey,
+                    function(data) {
+                        if (data.pageInfo.totalResults === 0) {
+                            errorMessage.show("No results.");
+                            return;
+                        }
+                        $(".search-results").show();
+                        // Clear out results
+                        $(".search-results ul").html("");
 
-                    var start = "<li><h4><a href=?v=";
-                    $.each(data.items, function(index, result) {
-                        $("#search-results ul").append(start + result.id.videoId + ">" + result.snippet.title + "</a></h4><a href=?v=" + result.id.videoId + "><img src=" + result.snippet.thumbnails.medium.url + " alt='" + result.snippet.title + "'></a></li>");
-                    });
-                },
-                function(jqXHR, textStatus, errorThrown) {
-                    logError(jqXHR, textStatus, errorThrown, "Search error");
-                }
-            );
+                        const start = "<li><h4><a href=?v=";
+                        $.each(data.items, function(index, result) {
+                            $(".search-results ul").append(start + result.id.videoId + ">" + result.snippet.title + "</a></h4><a href=?v=" + result.id.videoId + "><img src=" + result.snippet.thumbnails.medium.url + " alt='" + result.snippet.title + "'></a></li>");
+                        });
+                    },
+                    function(jqXHR, textStatus, errorThrown) {
+                        logError(jqXHR, textStatus, errorThrown, "Search error");
+                    }
+                );
+            }
         }
     }
 
     // Autocomplete with youtube suggested queries
-    $("#v").typeahead({
-        hint: false,
-        highlight: true,
-        minLength: 1
-    }, {
-        source: function (query, processSync, processAsync) {
-            getAutocompleteSuggestions(query, function(data) {
-                return processAsync($.map(data[1], function(item) {
-                    return item[0];
-                }));
-            });
-        }
-    }).bind("typeahead:selected", function(obj, datum) {
-        window.location.href = makeSearchURL(datum);
-    });
+    if (!shouldSkipYouTubeDataApi()) {
+        $(".search-input").typeahead({
+            hint: false,
+            highlight: true,
+            minLength: 1
+        }, {
+            source: function (query, processSync, processAsync) {
+                getAutocompleteSuggestions(query, function(data) {
+                    return processAsync($.map(data[1], function(item) {
+                        return item[0];
+                    }));
+                });
+            }
+        }).bind("typeahead:selected", function(obj, datum) {
+            window.location.href = makeSearchURL(datum);
+        });
+    }
 
     // Handle form submission
-    $("#form").submit(function(event) {
+    $(".search-form").submit(function(event) {
         event.preventDefault();
-        var formValue = $.trim($("#v").val());
-        var formValueTime = /[?&](t|time_continue)=(\d+)/g.exec(formValue);
+        let formValue = $.trim($(".search-input").val());
+        let formValueTime = /[?&](t|time_continue)=(\d+)/g.exec(formValue);
         if (formValueTime && formValueTime.length > 2) {
             formValue = formValue.replace(formValueTime[0], "");
             formValueTime = parseInt(formValueTime[2], 10);
         }
         if (formValue) {
-            var videoID = wrapParseYouTubeVideoID(formValue, true);
+            const videoID = wrapParseYouTubeVideoID(formValue);
             gtag("send", "event", "form submitted", videoID);
-            if (isFileProtocol()) {
-                errorMessage.show("Skipping video lookup request as we're running the site locally.");
+            if (shouldSkipYouTubeDataApi()) {
+                warningMessage.show("Skipping video lookup request while running locally.");
+                window.location.href = makeListenURL(videoID, formValueTime);
             }
             else {
                 $.ajax({
@@ -755,34 +891,33 @@ $(function() {
         }
         else {
             // Show the Focus button If there is no search
-            $("#focus-btn").show();
-            $("#focus-btn").css("display", "inline");
+            $(".focus-btn").show();
+            $(".focus-btn").css("display", "inline");
             errorMessage.show("Try entering a YouTube video ID or URL!");
         }
     });
 
-
     // Reverts to Home when there is no text in input
-    $("#v").on("input", function() {
-        if ($("#v").val() === "") {
-            $("#search-results").hide();
+    $(".search-input").on("input", function() {
+        if ($(".search-input").val() === "") {
+            $(".search-results").hide();
         }
     });
 
-    $("#toggleRepeat").click(function() {
-        $(this).toggleClass("toggleRepeatActive");
-        var active = $(this).hasClass("toggleRepeatActive");
+    $(".toggle-repeat-btn").click(function() {
+        $(this).toggleClass("toggle-repeat-active");
+        const active = $(this).hasClass("toggle-repeat-active");
         if (active) {
             $(this).html("&#10004; Repeat Track");
         }
         else {
             $(this).html("Repeat Track");
         }
-        ZenPlayer.isRepeat = $(this).hasClass("toggleRepeatActive");
+        ZenPlayer.isRepeat = $(this).hasClass("toggle-repeat-active");
     });
 
     // Handle demo link click
-    $("#demo").click(function(event) {
+    $(".demo-button").click(function(event) {
         event.preventDefault();
         resetAutoPlayList();
 
@@ -790,7 +925,7 @@ $(function() {
 
         // Don't continue appending to the URL if it appears "good enough".
         // This is likely only a problem if the demo link didn't work right the first time
-        var pickedDemo = pickDemo();
+        const pickedDemo = pickDemo();
         if (window.location.href.indexOf(demos) === -1) {
             window.location.href = makeListenURL(pickedDemo);
         }
@@ -800,7 +935,7 @@ $(function() {
     });
 
     // Handle focus link click
-    $("#focus-btn").click(function(event) {
+    $(".focus-btn").click(function(event) {
         event.preventDefault();
         resetAutoPlayList();
 
@@ -810,7 +945,7 @@ $(function() {
     });
 
     // handle click on search icon
-    $("#submit").click(function() {
+    $(".search-submit").click(function() {
         resetAutoPlayList();
     });
 
@@ -820,17 +955,17 @@ $(function() {
 
         // Show Focus Button
         if (window.location.href.indexOf(focusId) === -1) {
-            $("#focus-btn").show();
-            $("#focus-btn").css("display", "inline");
+            $(".focus-btn").show();
+            $(".focus-btn").css("display", "inline");
         }
         else {
             // Hide Focus Button
-            $("#focus-btn").hide();
+            $(".focus-btn").hide();
         }
     });
 
     // Handle lofi link click
-    $("#lofi-btn").click(function(event) {
+    $(".lofi-btn").click(function(event) {
         event.preventDefault();
         gtag("send", "event", "lofi", "clicked");
         // Redirect to the favorite "lofi" URL
@@ -841,12 +976,12 @@ $(function() {
     $(window).on("load", function() {
         // Show Lofi Button
         if (window.location.href.indexOf(lofiId) === -1) {
-            $("#lofi-btn").show();
-            $("#lofi-btn").css("display", "inline");
+            $(".lofi-btn").show();
+            $(".lofi-btn").css("display", "inline");
         }
         else {
             // Hide Lofi Button
-            $("#lofi-btn").hide();
+            $(".lofi-btn").hide();
         }
     });
 
@@ -855,7 +990,7 @@ $(function() {
 
     $(document).on("keyup", function(evt) {
         // Toggle play/pause if not typing in the search box
-        if (evt.keyCode === keyCodes.SPACEBAR && !$("#v").is(":focus")) {
+        if (evt.keyCode === keyCodes.SPACEBAR && !$(".search-input").is(":focus")) {
             evt.preventDefault();
             if (ZenPlayer.isPlaying) {
                 ZenPlayer.pause();
@@ -868,11 +1003,11 @@ $(function() {
 
     $(document).on("keydown", function(evt) {
         // If not typing in the search prevent "page down" scrolling
-        if (evt.keyCode === keyCodes.SPACEBAR && !$("#v").is(":focus")) {
+        if (evt.keyCode === keyCodes.SPACEBAR && !$(".search-input").is(":focus")) {
             evt.preventDefault();
         }
 
-        if (evt.keyCode === keyCodes.ENTER && $("#v").is(":focus")) {
+        if (evt.keyCode === keyCodes.ENTER && $(".search-input").is(":focus")) {
             resetAutoPlayList();
         }
     });
