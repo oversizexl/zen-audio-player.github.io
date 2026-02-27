@@ -1,7 +1,9 @@
 {
-  "extends": ["stylelint-config-standard"],
+  "extends": [
+    "stylelint-config-standard",
+    "stylelint-config-recess-order"
+  ],
   "rules": {
-    "shorthand-property-no-redundant-values": null,
     "media-feature-range-notation": null,
     "rule-empty-line-before": null,
     "color-hex-length": null,
@@ -11,6 +13,8 @@
     "color-function-alias-notation": null,
     "color-function-notation": null,
     "alpha-value-notation": null,
-    "at-rule-no-vendor-prefix": null
+    "at-rule-no-vendor-prefix": null,
+    "selector-max-id": 0,
+    "declaration-no-important": true
   }
 }

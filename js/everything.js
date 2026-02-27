@@ -25,8 +25,8 @@ const MAX_TAGS = 10;
 var errorMessage = {
     init: function() {},
     show: function(message) {
-        $("#zen-error").text("ERROR: " + message);
-        $("#zen-error").show();
+        $(".error-message").text("ERROR: " + message);
+        $(".error-message").show();
 
         // Pause if we got an error
         ZenPlayer.pause();
@@ -38,7 +38,7 @@ var errorMessage = {
         gtag("send", "event", "error", message);
     },
     hide: function() {
-        $("#zen-error").text("").hide();
+        $(".error-message").text("").hide();
         ZenPlayer.show();
     }
 };
@@ -46,13 +46,13 @@ var errorMessage = {
 var warningMessage = {
     init: function() {},
     show: function(message) {
-        $("#zen-warning").text("WARNING: " + message).show();
+        $(".warning-message").text("WARNING: " + message).show();
 
         // Send warning to Google Analytics
         gtag("send", "event", "warning", message);
     },
     hide: function() {
-        $("#zen-warning").text("").hide();
+        $(".warning-message").text("").hide();
     }
 };
 
@@ -178,7 +178,7 @@ var ZenPlayer = {
 
     init: function() {
         // Inject svg with control icons
-        $("#plyr-svg").load("https://unpkg.com/plyr@3.8.4/dist/plyr.svg");
+        $(".plyr-svg").load("https://unpkg.com/plyr@3.8.4/dist/plyr.svg");
 
         const playerEl = document.querySelector(".plyr");
         plyrPlayer = new Plyr(playerEl, {
@@ -321,12 +321,12 @@ var ZenPlayer = {
             let updatedUrl = that.videoUrl;
             if (resumeTime > 0) {
                 updatedUrl = that.videoUrl + "&t=" + Math.round(resumeTime);
-                $("#zen-video-title").attr("href", updatedUrl);
+                $(".video-title").attr("href", updatedUrl);
             }
-            else if (resumeTime <= 0 && $("#zen-video-title").attr("href") !== that.videoUrl) {
+            else if (resumeTime <= 0 && $(".video-title").attr("href") !== that.videoUrl) {
                 updatedUrl = that.videoUrl;
             }
-            $("#zen-video-title").attr("href", updatedUrl);
+            $(".video-title").attr("href", updatedUrl);
         });
 
         plyrPlayer.on("playing", function() {
@@ -339,18 +339,18 @@ var ZenPlayer = {
     },
     // play next song from autoplay
     playNext: function(videoID) {
-        $("#v").val(videoID);
-        $("#form").submit();
+        $(".search-input").val(videoID);
+        $(".search-form").submit();
     },
     show: function() {
-        $("#audioplayer").show();
+        $(".audio-player").show();
         // Hide the demo link as some video is playing
-        $("#demo").hide();
+        $(".demo-button").hide();
     },
     hide: function() {
-        $("#audioplayer").hide();
+        $(".audio-player").hide();
         // Show the demo link as no video is playing
-        $("#demo").show();
+        $(".demo-button").show();
     },
     setupTitle: function() {
         // Prepend music note only if title does not already begin with one.
@@ -358,31 +358,31 @@ var ZenPlayer = {
         if (!/^[\u2669\u266A\u266B\u266C\u266D\u266E\u266F]/.test(tmpVideoTitle)) {
             tmpVideoTitle = "<i class=\"fa fa-music\"></i> " + tmpVideoTitle;
         }
-        $("#zen-video-title").html(DOMPurify.sanitize(tmpVideoTitle));
-        $("#zen-video-title").attr("href", this.videoUrl);
+        $(".video-title").html(DOMPurify.sanitize(tmpVideoTitle));
+        $(".video-title").attr("href", this.videoUrl);
     },
     setupVideoDescription: function(videoID) {
         let description = anchorURLs(this.videoDescription);
         description = anchorTimestamps(description, videoID);
-        $("#zen-video-description").html(DOMPurify.sanitize(description));
-        $("#zen-video-description").hide();
+        $(".video-description").html(DOMPurify.sanitize(description));
+        $(".video-description").hide();
 
-        $("#toggleDescription").click(function(event) {
-            toggleElement(event, "#zen-video-description", "Description");
+        $(".toggle-description-btn").click(function(event) {
+            toggleElement(event, ".video-description", "Description");
         });
     },
     setupPlyrToggle: function() {
         // Show player button click event
-        $("#togglePlayer").off("click").on("click", function(event) {
+        $(".toggle-player-btn").off("click").on("click", function(event) {
             togglePlyrVideo(event);
         });
     },
     setupAutoplayToggle: function() {
         // toggle auto next song playing
-        $("#toggleAutoplay").click(function(event) {
-            const toggleTextElement = $("#" + event.currentTarget.id);
-            toggleTextElement.toggleClass("toggleAutoplayActive");
-            const active = toggleTextElement.hasClass("toggleAutoplayActive");
+        $(".toggle-autoplay-btn").click(function(event) {
+            const toggleTextElement = $(event.currentTarget);
+            toggleTextElement.toggleClass("toggle-autoplay-active");
+            const active = toggleTextElement.hasClass("toggle-autoplay-active");
             if (active) {
                 toggleTextElement.html("&#10004; Autoplay");
                 autoplayState = true;
@@ -402,7 +402,7 @@ var ZenPlayer = {
 
         if (shouldSkipYouTubeDataApi()) {
             console.log("Skipping video description request as we're running the site locally.");
-            $("#toggleDescription").hide();
+            $(".toggle-description-btn").hide();
         }
         else {
             getYouTubeVideoDescription(
@@ -425,7 +425,7 @@ var ZenPlayer = {
 
         // If there's no description to show, don't pretend there is
         if (description.trim().length === 0) {
-            $("#toggleDescription").hide();
+            $(".toggle-description-btn").hide();
         }
 
         return description;
@@ -463,7 +463,7 @@ function updateTweetMessage() {
 
     twttr.widgets.createHashtagButton(
         "ZenAudioPlayer",
-        document.getElementById("tweetButton"),
+        document.querySelector(".tweet-button"),
         opts
     );
 }
@@ -480,8 +480,7 @@ function toggleElement(event, toggleID, buttonText) {
     const toggleElement = $(toggleID);
     toggleElement.toggle("fast");
 
-    const toggleTextElement = $("#" + event.currentTarget.id);
-
+    const toggleTextElement = $(event.currentTarget);
     if (toggleElement.is(":visible")) {
         // Check for current state(Hide/Show) and toggle it
         if (toggleTextElement.is(":contains(Hide)")) {
@@ -504,8 +503,7 @@ function togglePlyrVideo(event) {
         return;
     }
 
-    const toggleTextElement = $("#" + event.currentTarget.id);
-
+    const toggleTextElement = $(event.currentTarget);
     if (wrapper.is(":visible")) {
         wrapper.hide("fast", function() {
             toggleTextElement.text("Show Player");
@@ -580,13 +578,10 @@ function cleanURL(url) {
  */
 function makeListenURL(videoID, videoPosition) {
     const url = cleanURL(window.location);
-
     url.setSearch("v", videoID);
-
     if (videoPosition) {
         url.setSearch("t", videoPosition);
     }
-
     return url.toString();
 }
 
@@ -666,7 +661,6 @@ function wrapParseYouTubeVideoID(url) {
     }
 
     const info = parseYoutubeVideoID(url);
-
     if (info.id) {
         currentVideoID = info.id;
         gtag("send", "event", "video ID format", info.format);
@@ -695,20 +689,19 @@ function pickDemo() {
 }
 
 function updateAutoplayToggle(state) {
-    const toggleElement = $("#toggleAutoplay");
+    const toggleElement = $(".toggle-autoplay-btn");
     if (state) {
-        toggleElement.addClass("toggleAutoplayActive");
+        toggleElement.addClass("toggle-autoplay-active");
         toggleElement.html("&#10004; Autoplay");
     }
     else {
-        toggleElement.removeClass("toggleAutoplayActive");
+        toggleElement.removeClass("toggle-autoplay-active");
         toggleElement.html("Autoplay");
     }
 }
 
 function getNewVideoID() {
-    let nextID;
-    nextID = playList.pop();
+    let nextID = playList.pop();
     while (currentVideoID === nextID) {
         nextID = playList.pop();
     }
@@ -717,32 +710,28 @@ function getNewVideoID() {
 }
 
 function fetchSuggestedVideoIds() {
-    if (playList.length === 0 || playList.size === 0) {
-        if (tags.length) {
+    if ((playList.length === 0 || playList.size === 0) && tags.length && !shouldSkipYouTubeDataApi()) {
+        for (let index = 0; index < tags.length && index < MAX_TAGS; index++) {
             // get similar videos, populate playList
-            if (!shouldSkipYouTubeDataApi()) {
-                for (let index = 0; index < tags.length && index < MAX_TAGS; index++) {
-                    $.ajax({
-                        url: "https://www.googleapis.com/youtube/v3/search",
-                        dataType: "json",
-                        async: false,
-                        data: {
-                            key: youTubeDataApiKey,
-                            part: "snippet",
-                            type: "video",
-                            order: "relevance",
-                            q: tags[index],
-                            maxResults: 2
-                        },
-                        success: onRelatedVideoFetchSuccess
-                    }).fail(function(jqXHR, textStatus, errorThrown) {
-                        logError(jqXHR, textStatus, errorThrown, "Related video lookup error");
-                    });
-                }
-                playList = Array.from(playList);
-                window.sessionStorage.setItem("playList", JSON.stringify(playList));
-            }
+            $.ajax({
+                url: "https://www.googleapis.com/youtube/v3/search",
+                dataType: "json",
+                async: false,
+                data: {
+                    key: youTubeDataApiKey,
+                    part: "snippet",
+                    type: "video",
+                    order: "relevance",
+                    q: tags[index],
+                    maxResults: 2
+                },
+                success: onRelatedVideoFetchSuccess
+            }).fail(function(jqXHR, textStatus, errorThrown) {
+                logError(jqXHR, textStatus, errorThrown, "Related video lookup error");
+            });
         }
+        playList = Array.from(playList);
+        window.sessionStorage.setItem("playList", JSON.stringify(playList))
     }
 }
 
@@ -774,9 +763,9 @@ function resetAutoPlayList() {
 
 $(function() {
     if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-        $("#container").hide();
-        $("#mobile-message").html("Sorry, we don't support mobile devices.");
-        $("#mobile-message").show();
+        $("main").hide();
+        $(".mobile-message").html("Sorry, we don't support mobile devices.");
+        $(".mobile-message").show();
         return;
     }
 
@@ -793,12 +782,12 @@ $(function() {
     // Preload the form from the URL
     const currentVideoID = getCurrentVideoID();
     if (currentVideoID) {
-        $("#v").attr("value", currentVideoID);
+        $(".search-input").attr("value", currentVideoID);
     }
     else {
         const currentSearchQuery = getCurrentSearchQuery();
         if (currentSearchQuery) {
-            $("#v").attr("value", currentSearchQuery);
+            $(".search-input").attr("value", currentSearchQuery);
             if (shouldSkipYouTubeDataApi()) {
                 warningMessage.show("Search is disabled on localhost to preserve YouTube API quota. Paste a video URL or ID to play directly.");
             }
@@ -811,13 +800,13 @@ $(function() {
                             errorMessage.show("No results.");
                             return;
                         }
-                        $("#search-results").show();
+                        $(".search-results").show();
                         // Clear out results
-                        $("#search-results ul").html("");
+                        $(".search-results ul").html("");
 
                         const start = "<li><h4><a href=?v=";
                         $.each(data.items, function(index, result) {
-                            $("#search-results ul").append(start + result.id.videoId + ">" + result.snippet.title + "</a></h4><a href=?v=" + result.id.videoId + "><img src=" + result.snippet.thumbnails.medium.url + " alt='" + result.snippet.title + "'></a></li>");
+                            $(".search-results ul").append(start + result.id.videoId + ">" + result.snippet.title + "</a></h4><a href=?v=" + result.id.videoId + "><img src=" + result.snippet.thumbnails.medium.url + " alt='" + result.snippet.title + "'></a></li>");
                         });
                     },
                     function(jqXHR, textStatus, errorThrown) {
@@ -830,7 +819,7 @@ $(function() {
 
     // Autocomplete with youtube suggested queries
     if (!shouldSkipYouTubeDataApi()) {
-        $("#v").typeahead({
+        $(".search-input").typeahead({
             hint: false,
             highlight: true,
             minLength: 1
@@ -848,9 +837,9 @@ $(function() {
     }
 
     // Handle form submission
-    $("#form").submit(function(event) {
+    $(".search-form").submit(function(event) {
         event.preventDefault();
-        let formValue = $.trim($("#v").val());
+        let formValue = $.trim($(".search-input").val());
         let formValueTime = /[?&](t|time_continue)=(\d+)/g.exec(formValue);
         if (formValueTime && formValueTime.length > 2) {
             formValue = formValue.replace(formValueTime[0], "");
@@ -891,34 +880,34 @@ $(function() {
         }
         else {
             // Show the Focus button If there is no search
-            $("#focus-btn").show();
-            $("#focus-btn").css("display", "inline");
+            $(".focus-btn").show();
+            $(".focus-btn").css("display", "inline");
             errorMessage.show("Try entering a YouTube video ID or URL!");
         }
     });
 
 
     // Reverts to Home when there is no text in input
-    $("#v").on("input", function() {
-        if ($("#v").val() === "") {
-            $("#search-results").hide();
+    $(".search-input").on("input", function() {
+        if ($(".search-input").val() === "") {
+            $(".search-results").hide();
         }
     });
 
-    $("#toggleRepeat").click(function() {
-        $(this).toggleClass("toggleRepeatActive");
-        const active = $(this).hasClass("toggleRepeatActive");
+    $(".toggle-repeat-btn").click(function() {
+        $(this).toggleClass("toggle-repeat-active");
+        const active = $(this).hasClass("toggle-repeat-active");
         if (active) {
             $(this).html("&#10004; Repeat Track");
         }
         else {
             $(this).html("Repeat Track");
         }
-        ZenPlayer.isRepeat = $(this).hasClass("toggleRepeatActive");
+        ZenPlayer.isRepeat = $(this).hasClass("toggle-repeat-active");
     });
 
     // Handle demo link click
-    $("#demo").click(function(event) {
+    $(".demo-button").click(function(event) {
         event.preventDefault();
         resetAutoPlayList();
 
@@ -936,7 +925,7 @@ $(function() {
     });
 
     // Handle focus link click
-    $("#focus-btn").click(function(event) {
+    $(".focus-btn").click(function(event) {
         event.preventDefault();
         resetAutoPlayList();
 
@@ -946,7 +935,7 @@ $(function() {
     });
 
     // handle click on search icon
-    $("#submit").click(function() {
+    $(".search-submit").click(function() {
         resetAutoPlayList();
     });
 
@@ -956,17 +945,17 @@ $(function() {
 
         // Show Focus Button
         if (window.location.href.indexOf(focusId) === -1) {
-            $("#focus-btn").show();
-            $("#focus-btn").css("display", "inline");
+            $(".focus-btn").show();
+            $(".focus-btn").css("display", "inline");
         }
         else {
             // Hide Focus Button
-            $("#focus-btn").hide();
+            $(".focus-btn").hide();
         }
     });
 
     // Handle lofi link click
-    $("#lofi-btn").click(function(event) {
+    $(".lofi-btn").click(function(event) {
         event.preventDefault();
         gtag("send", "event", "lofi", "clicked");
         // Redirect to the favorite "lofi" URL
@@ -977,12 +966,12 @@ $(function() {
     $(window).on("load", function() {
         // Show Lofi Button
         if (window.location.href.indexOf(lofiId) === -1) {
-            $("#lofi-btn").show();
-            $("#lofi-btn").css("display", "inline");
+            $(".lofi-btn").show();
+            $(".lofi-btn").css("display", "inline");
         }
         else {
             // Hide Lofi Button
-            $("#lofi-btn").hide();
+            $(".lofi-btn").hide();
         }
     });
 
@@ -991,7 +980,7 @@ $(function() {
 
     $(document).on("keyup", function(evt) {
         // Toggle play/pause if not typing in the search box
-        if (evt.keyCode === keyCodes.SPACEBAR && !$("#v").is(":focus")) {
+        if (evt.keyCode === keyCodes.SPACEBAR && !$(".search-input").is(":focus")) {
             evt.preventDefault();
             if (ZenPlayer.isPlaying) {
                 ZenPlayer.pause();
@@ -1004,11 +993,11 @@ $(function() {
 
     $(document).on("keydown", function(evt) {
         // If not typing in the search prevent "page down" scrolling
-        if (evt.keyCode === keyCodes.SPACEBAR && !$("#v").is(":focus")) {
+        if (evt.keyCode === keyCodes.SPACEBAR && !$(".search-input").is(":focus")) {
             evt.preventDefault();
         }
 
-        if (evt.keyCode === keyCodes.ENTER && $("#v").is(":focus")) {
+        if (evt.keyCode === keyCodes.ENTER && $(".search-input").is(":focus")) {
             resetAutoPlayList();
         }
     });
