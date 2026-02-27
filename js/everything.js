@@ -374,7 +374,7 @@ var ZenPlayer = {
     setupPlyrToggle: function() {
         // Show player button click event
         $(".toggle-player-btn").off("click").on("click", function(event) {
-            togglePlyrVideo(event);
+            toggleElement(event, ".plyr__video-wrapper", "Player");
         });
     },
     setupAutoplayToggle: function() {
@@ -474,46 +474,17 @@ function logError(jqXHR, textStatus, errorThrown, _errorMessage) {
     console.log(_errorMessage, errorThrown);
 }
 
-function toggleElement(event, toggleID, buttonText) {
+function toggleElement(event, selector, buttonText) {
     event.preventDefault();
 
-    const toggleElement = $(toggleID);
-    toggleElement.toggle("fast");
-
-    const toggleTextElement = $(event.currentTarget);
-    if (toggleElement.is(":visible")) {
-        // Check for current state(Hide/Show) and toggle it
-        if (toggleTextElement.is(":contains(Hide)")) {
-            toggleTextElement.text("Show " + buttonText);
-        }
-        else if (toggleTextElement.is(":contains(Show)")) {
-            toggleTextElement.text("Hide " + buttonText);
-        }
-    }
-    else {
-        toggleTextElement.text("Show " + buttonText);
-    }
-}
-
-function togglePlyrVideo(event) {
-    event.preventDefault();
-
-    const wrapper = $(".plyr__video-wrapper");
-    if (!wrapper.length) {
+    const targetElement = $(selector);
+    if (!targetElement.length) {
         return;
     }
-
     const toggleTextElement = $(event.currentTarget);
-    if (wrapper.is(":visible")) {
-        wrapper.hide("fast", function() {
-            toggleTextElement.text("Show Player");
-        });
-    }
-    else {
-        wrapper.show("fast", function() {
-            toggleTextElement.text("Hide Player");
-        });
-    }
+    targetElement.toggle("fast", function() {
+        toggleTextElement.text((targetElement.is(":visible") ? "Hide " : "Show ") + buttonText);
+    });
 }
 
 
@@ -603,7 +574,10 @@ function anchorURLs(text) {
     *    (2) it encounters a period (.) or whitespace, if the TLD was followed by a forwardslash (/) */
     const re = /((?:http|https)\:\/\/[a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,3}(?:\/\S*[^\.\s])?)/g; // eslint-disable-line no-useless-escape
     /* Wraps all found URLs in <a> tags */
-    return text.replace(re, "<a href=\"$1\" target=\"_blank\">$1</a>");
+    return text.replace(re, function(u) {
+        const uEncoded = encodeURI(u);
+        return `<a href="${uEncoded}" target="_blank">${uEncoded}</a>`;
+    });
 }
 
 function anchorTimestamps(text, videoID) {
