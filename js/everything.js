@@ -186,10 +186,15 @@ var ZenPlayer = {
         $(".plyr-svg").load("https://unpkg.com/plyr@3.8.4/dist/plyr.svg");
 
         const playerEl = document.querySelector(".plyr");
+        if (playerEl) {
+            playerEl.disablePictureInPicture = true;
+        }
+
         plyrPlayer = new Plyr(playerEl, {
             autoplay: true,
             controls: ["play", "progress", "current-time", "duration", "mute", "volume"],
-            hideControls: false
+            hideControls: false,
+            pip: false
         });
 
         // Set source immediately after creating the player when we have a video id
