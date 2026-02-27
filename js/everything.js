@@ -582,10 +582,10 @@ function anchorURLs(text) {
     *    (1) it encounters a TLD
     *    (2) it encounters a period (.) or whitespace, if the TLD was followed by a forwardslash (/) */
     const re = /((?:http|https)\:\/\/[a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,3}(?:\/\S*[^\.\s])?)/g; // eslint-disable-line no-useless-escape
-    /* Wraps all found URLs in <a> tags */
+    /* Wraps all found URLs in <a> tags, do not encode display text */
     return text.replace(re, function(u) {
         const uEncoded = encodeURI(u);
-        return `<a href="${uEncoded}" target="_blank">${uEncoded}</a>`;
+        return `<a href="${uEncoded}" target="_blank">${u}</a>`;
     });
 }
 
