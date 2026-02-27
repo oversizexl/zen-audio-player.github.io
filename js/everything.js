@@ -66,6 +66,11 @@ function isLocalDevelopment() {
 }
 
 function shouldSkipYouTubeDataApi() {
+    const searchParams = URI(window.location).search(true);
+    const forceApi = searchParams.ytApi === "1";
+    if (forceApi) {
+        return false;
+    }
     return isFileProtocol() || isLocalDevelopment();
 }
 
