@@ -123,7 +123,7 @@ describe("Page Structure", async function() {
             const relValue = await link.getAttribute("rel");
             const hrefValue = await link.getAttribute("href");
 
-            if (relValue === preloadStylesheet && hrefValue.match(/https:\/\/unpkg\.com\/primer-css@[~^]?\d.+\/css\/primer\.css/)) {
+            if (relValue === preloadStylesheet && hrefValue.match(/https:\/\/unpkg\.com\/primer-css@[~^]?\d.+\/(css\/primer\.css|build\/build\.css)/)) {
                 foundPrimerCSS = true;
             }
             if (relValue === preloadStylesheet && hrefValue.match(/https:\/\/unpkg\.com\/font-awesome@[~^]?\d.+\/css\/font-awesome\.min\.css/)) {
@@ -155,7 +155,7 @@ describe("Page Structure", async function() {
         assert.ok(fs.existsSync(imgFolderPath) + "zen-audio-player-453.png");
         assert.ok(fs.existsSync(imgFolderPath) + "zen-audio-player-905.png");
 
-        assert.equal(await getProperty(page, "header > figure > a", "href"), "https://zen-audio-player.github.io/");
+        assert.equal(await getProperty(page, "header > figure > a", "href"), "/");
         assert.ok((await getProperty(page, "header > figure > a.zen-logo > img.img-100", "src")).indexOf("img/zen-audio-player-905.png") !== -1);
         assert.equal(await getProperty(page, "header > figure > a.zen-logo > img.img-100", "alt"), "Zen Audio Player logo");
 
