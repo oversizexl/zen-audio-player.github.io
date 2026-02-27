@@ -90,7 +90,7 @@ describe("Demo", async function() {
             "ERROR: the video owner won't allow us to play that video",
             "ERROR: we can't play that video here, or something is wrong with YouTube's iframe API"
         ];
-        assert.ok(zenErrorText === "" || expectedErrors.indexOf(zenErrorText) !== -1);
+        assert.ok(zenErrorText === "" || expectedErrors.indexOf(zenErrorText) !== -1, zenErrorText);
 
         await page.close();
     });
