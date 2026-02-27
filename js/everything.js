@@ -23,9 +23,7 @@ var autoplayState = false;
 const MAX_TAGS = 10;
 
 var errorMessage = {
-    init: function() {
-        // nothing for now
-    },
+    init: function() {},
     show: function(message) {
         $("#zen-error").text("ERROR: " + message);
         $("#zen-error").show();
@@ -46,9 +44,7 @@ var errorMessage = {
 };
 
 var warningMessage = {
-    init: function() {
-        // nothing for now
-    },
+    init: function() {},
     show: function(message) {
         $("#zen-warning").text("WARNING: " + message).show();
 
@@ -60,16 +56,12 @@ var warningMessage = {
     }
 };
 
-/**
- * Are we serving the file over file://
- * @returns {boolean}
- */
 function isFileProtocol() {
     return URI(window.location).protocol() === "file";
 }
 
 function isLocalDevelopment() {
-    var hostname = (window.location && window.location.hostname) || "";
+    const hostname = (window.location && window.location.hostname) || "";
     return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
 }
 
@@ -79,8 +71,8 @@ function shouldSkipYouTubeDataApi() {
 
 function handleYouTubeError(details) {
     if (typeof details.code === "number") {
-        var message = "Got an unknown error, check the JS console.";
-        var verboseMessage = message;
+        let message = "Got an unknown error, check the JS console.";
+        let verboseMessage = message;
 
         // Handle the different error codes
         switch (details.code) {
@@ -116,11 +108,7 @@ function handleYouTubeError(details) {
 }
 
 function getPlayerDuration() {
-    if (!plyrPlayer) {
-        return 0;
-    }
-
-    if (typeof plyrPlayer.duration === "number" && !isNaN(plyrPlayer.duration)) {
+    if (plyrPlayer && typeof plyrPlayer.duration === "number" && !isNaN(plyrPlayer.duration)) {
         return plyrPlayer.duration;
     }
 
@@ -128,11 +116,7 @@ function getPlayerDuration() {
 }
 
 function getPlayerCurrentTime() {
-    if (!plyrPlayer) {
-        return 0;
-    }
-
-    if (typeof plyrPlayer.currentTime === "number" && !isNaN(plyrPlayer.currentTime)) {
+    if (plyrPlayer && typeof plyrPlayer.currentTime === "number" && !isNaN(plyrPlayer.currentTime)) {
         return plyrPlayer.currentTime;
     }
 
@@ -196,7 +180,7 @@ var ZenPlayer = {
         // Inject svg with control icons
         $("#plyr-svg").load("https://unpkg.com/plyr@3.8.4/dist/plyr.svg");
 
-        var playerEl = document.querySelector(".plyr");
+        const playerEl = document.querySelector(".plyr");
         plyrPlayer = new Plyr(playerEl, {
             autoplay: true,
             controls: ["play", "progress", "current-time", "duration", "mute", "volume"],
@@ -215,7 +199,7 @@ var ZenPlayer = {
             };
         }
 
-        var that = this;
+        const that = this;
 
         plyrPlayer.on("error", function(event) {
             if (event && event.detail && typeof event.detail.code === "number") {
@@ -243,8 +227,8 @@ var ZenPlayer = {
             that.videoUrl = getPlayerVideoUrl();
 
             // Updates the time position by a given argument in URL
-                // IE https://zenplayer.audio/?v=koJv-j1usoI&t=30 starts at 0:30
-            var t = getCurrentTimePosition();
+            // I.e. https://zenplayer.audio/?v=koJv-j1usoI&t=30 starts at 0:30
+            const t = getCurrentTimePosition();
             if (t) {
                 that.videoPosition = t;
                 window.sessionStorage[currentVideoID] = t;
@@ -263,14 +247,14 @@ var ZenPlayer = {
         });
 
         plyrPlayer.on("playing", function() {
-            var videoDuration = getPlayerDuration();
             if (that.updated) {
                 return;
             }
 
+            const videoDuration = getPlayerDuration();
             // Start video from where we left off, if it makes sense
             if (window.sessionStorage && currentVideoID in window.sessionStorage) {
-                var resumeTime = window.sessionStorage[currentVideoID];
+                const resumeTime = window.sessionStorage[currentVideoID];
                 if (!isNaN(resumeTime) && videoDuration > 0 && resumeTime < videoDuration - 3) {
                     seekPlayerTo(resumeTime);
                 }
@@ -300,7 +284,7 @@ var ZenPlayer = {
                 if (playList.length === 0 || playList.size === 0) {
                     fetchSuggestedVideoIds();
                 }
-                var newId = getNewVideoID();
+                const newId = getNewVideoID();
                 that.playNext(newId);
             }
         });
@@ -312,10 +296,10 @@ var ZenPlayer = {
             }
 
             // Store the current time of the video.
-            var resumeTime = 0;
-            var videoDuration = getPlayerDuration();
+            let resumeTime = 0;
+            const videoDuration = getPlayerDuration();
             if (window.sessionStorage && videoDuration > 0) {
-                var currentTime = getPlayerCurrentTime();
+                const currentTime = getPlayerCurrentTime();
                 /**
                  * Only store the current time if the video isn't done
                  * playing yet. If the video finished already, then it
@@ -334,7 +318,7 @@ var ZenPlayer = {
                 }
                 window.sessionStorage[currentVideoID] = resumeTime;
             }
-            var updatedUrl = that.videoUrl;
+            let updatedUrl = that.videoUrl;
             if (resumeTime > 0) {
                 updatedUrl = that.videoUrl + "&t=" + Math.round(resumeTime);
                 $("#zen-video-title").attr("href", updatedUrl);
@@ -370,7 +354,7 @@ var ZenPlayer = {
     },
     setupTitle: function() {
         // Prepend music note only if title does not already begin with one.
-        var tmpVideoTitle = this.videoTitle;
+        let tmpVideoTitle = this.videoTitle;
         if (!/^[\u2669\u266A\u266B\u266C\u266D\u266E\u266F]/.test(tmpVideoTitle)) {
             tmpVideoTitle = "<i class=\"fa fa-music\"></i> " + tmpVideoTitle;
         }
@@ -378,7 +362,7 @@ var ZenPlayer = {
         $("#zen-video-title").attr("href", this.videoUrl);
     },
     setupVideoDescription: function(videoID) {
-        var description = anchorURLs(this.videoDescription);
+        let description = anchorURLs(this.videoDescription);
         description = anchorTimestamps(description, videoID);
         $("#zen-video-description").html(DOMPurify.sanitize(description));
         $("#zen-video-description").hide();
@@ -391,15 +375,14 @@ var ZenPlayer = {
         // Show player button click event
         $("#togglePlayer").off("click").on("click", function(event) {
             togglePlyrVideo(event);
-            // toggleElement(event, ".plyr__video-wrapper", "Player");
         });
     },
     setupAutoplayToggle: function() {
         // toggle auto next song playing
         $("#toggleAutoplay").click(function(event) {
-            var toggleTextElement = $("#" + event.currentTarget.id);
+            const toggleTextElement = $("#" + event.currentTarget.id);
             toggleTextElement.toggleClass("toggleAutoplayActive");
-            var active = toggleTextElement.hasClass("toggleAutoplayActive");
+            const active = toggleTextElement.hasClass("toggleAutoplayActive");
             if (active) {
                 toggleTextElement.html("&#10004; Autoplay");
                 autoplayState = true;
@@ -415,7 +398,7 @@ var ZenPlayer = {
     },
 
     getVideoDescription: function(videoID) {
-        var description = "";
+        let description = "";
 
         if (shouldSkipYouTubeDataApi()) {
             console.log("Skipping video description request as we're running the site locally.");
@@ -463,15 +446,15 @@ var ZenPlayer = {
  * Create a twitter message with current song if we have one.
  */
 function updateTweetMessage() {
-    var url = URI("https://zen-audio-player.github.io");
+    const url = URI("https://zen-audio-player.github.io");
 
-    var opts = {
+    const opts = {
         text: "Listen to YouTube videos without the distracting visuals",
         hashTags: "ZenAudioPlayer",
         url: url.toString()
     };
 
-    var id = getCurrentVideoID();
+    const id = getCurrentVideoID();
     if (id) {
         url.setSearch("v", id);
         opts.url = url.toString();
@@ -486,7 +469,7 @@ function updateTweetMessage() {
 }
 
 function logError(jqXHR, textStatus, errorThrown, _errorMessage) {
-    var responseText = JSON.parse(jqXHR.error().responseText);
+    const responseText = JSON.parse(jqXHR.error().responseText);
     errorMessage.show(responseText.error.errors[0].message);
     console.log(_errorMessage, errorThrown);
 }
@@ -494,10 +477,10 @@ function logError(jqXHR, textStatus, errorThrown, _errorMessage) {
 function toggleElement(event, toggleID, buttonText) {
     event.preventDefault();
 
-    var toggleElement = $(toggleID);
+    const toggleElement = $(toggleID);
     toggleElement.toggle("fast");
 
-    var toggleTextElement = $("#" + event.currentTarget.id);
+    const toggleTextElement = $("#" + event.currentTarget.id);
 
     if (toggleElement.is(":visible")) {
         // Check for current state(Hide/Show) and toggle it
@@ -516,12 +499,12 @@ function toggleElement(event, toggleID, buttonText) {
 function togglePlyrVideo(event) {
     event.preventDefault();
 
-    var wrapper = $(".plyr__video-wrapper");
+    const wrapper = $(".plyr__video-wrapper");
     if (!wrapper.length) {
         return;
     }
 
-    var toggleTextElement = $("#" + event.currentTarget.id);
+    const toggleTextElement = $("#" + event.currentTarget.id);
 
     if (wrapper.is(":visible")) {
         wrapper.hide("fast", function() {
@@ -542,10 +525,10 @@ function togglePlyrVideo(event) {
  * @return {string|null}
  */
 function getCurrentVideoID() {
-    var v = URI(window.location).search(true).v;
+    const v = URI(window.location).search(true).v;
 
     // If the URL has multiple v parameters, take parsing the last one (usually when ?v=someurl&v=xyz)
-    var r;
+    let r;
     if (Array.isArray(v)) {
         r = wrapParseYouTubeVideoID(v.pop());
     }
@@ -560,8 +543,8 @@ function getCurrentVideoID() {
  * @returns {Number}
  */
 function getCurrentTimePosition() {
-    var t = parseInt(URI(window.location).search(true).t, 10);
-    var timeContinue = parseInt(URI(window.location).search(true).time_continue, 10);
+    const t = parseInt(URI(window.location).search(true).t, 10);
+    const timeContinue = parseInt(URI(window.location).search(true).time_continue, 10);
     if (t > 0 && t < Number.MAX_VALUE) {
         return t;
     }
@@ -596,7 +579,7 @@ function cleanURL(url) {
  * @returns {string}
  */
 function makeListenURL(videoID, videoPosition) {
-    var url = cleanURL(window.location);
+    const url = cleanURL(window.location);
 
     url.setSearch("v", videoID);
 
@@ -623,7 +606,7 @@ function anchorURLs(text) {
     * Ends capture when:
     *    (1) it encounters a TLD
     *    (2) it encounters a period (.) or whitespace, if the TLD was followed by a forwardslash (/) */
-    var re = /((?:http|https)\:\/\/[a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,3}(?:\/\S*[^\.\s])?)/g; // eslint-disable-line no-useless-escape
+    const re = /((?:http|https)\:\/\/[a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,3}(?:\/\S*[^\.\s])?)/g; // eslint-disable-line no-useless-escape
     /* Wraps all found URLs in <a> tags */
     return text.replace(re, "<a href=\"$1\" target=\"_blank\">$1</a>");
 }
@@ -640,23 +623,24 @@ function anchorTimestamps(text, videoID) {
     (?:\d|\:[0-5]\d) either the string is "colon 0-9" or "colon 00-59"
     (?:$|\:[0-5]\d)) either the string ends or is a a number between 00-59
     */
-    var re = /((?:[0-5]\d|\d|)(?:\d|\:[0-5]\d)(?:$|\:[0-5]\d))/g; // eslint-disable-line no-useless-escape
+    const re = /((?:[0-5]\d|\d|)(?:\d|\:[0-5]\d)(?:$|\:[0-5]\d))/g; // eslint-disable-line no-useless-escape
     return text.replace(re, function(match) {
         return "<a href=\"" + makeListenURL(videoID, convertTimestamp(match)) + "\">" + match + "</a>";
     });
 }
 
 function convertTimestamp(timestamp) {
-    var seconds;
-    var minutes;
-    var hours = 0;
-    var timeComponents = timestamp.split(":");
+    let seconds;
+    let minutes;
+    let hours;
+    const timeComponents = timestamp.split(":");
     if (timeComponents.length === 3) {
         hours = convertHoursToSeconds(timeComponents[0]);
         minutes = convertMinutesToSeconds(timeComponents[1]);
         seconds = parseBase10Int(timeComponents[2]);
     }
     else {
+        hours = 0;
         minutes = convertMinutesToSeconds(timeComponents[0]);
         seconds = parseBase10Int(timeComponents[1]);
     }
@@ -681,7 +665,7 @@ function wrapParseYouTubeVideoID(url) {
         return currentVideoID;
     }
 
-    var info = parseYoutubeVideoID(url);
+    const info = parseYoutubeVideoID(url);
 
     if (info.id) {
         currentVideoID = info.id;
@@ -711,7 +695,7 @@ function pickDemo() {
 }
 
 function updateAutoplayToggle(state) {
-    var toggleElement = $("#toggleAutoplay");
+    const toggleElement = $("#toggleAutoplay");
     if (state) {
         toggleElement.addClass("toggleAutoplayActive");
         toggleElement.html("&#10004; Autoplay");
@@ -723,7 +707,7 @@ function updateAutoplayToggle(state) {
 }
 
 function getNewVideoID() {
-    var nextID;
+    let nextID;
     nextID = playList.pop();
     while (currentVideoID === nextID) {
         nextID = playList.pop();
@@ -764,7 +748,7 @@ function fetchSuggestedVideoIds() {
 
 function onRelatedVideoFetchSuccess(data) {
     // push items into playlist
-    for (var i = 0; i < data.items.length; i++) {
+    for (let i = 0; i < data.items.length; i++) {
         playList.add(data.items[i].id.videoId);
     }
 }
@@ -807,12 +791,12 @@ $(function() {
 
     // How do we know if the value is truly invalid?
     // Preload the form from the URL
-    var currentVideoID = getCurrentVideoID();
+    const currentVideoID = getCurrentVideoID();
     if (currentVideoID) {
         $("#v").attr("value", currentVideoID);
     }
     else {
-        var currentSearchQuery = getCurrentSearchQuery();
+        const currentSearchQuery = getCurrentSearchQuery();
         if (currentSearchQuery) {
             $("#v").attr("value", currentSearchQuery);
             if (shouldSkipYouTubeDataApi()) {
@@ -831,7 +815,7 @@ $(function() {
                         // Clear out results
                         $("#search-results ul").html("");
 
-                        var start = "<li><h4><a href=?v=";
+                        const start = "<li><h4><a href=?v=";
                         $.each(data.items, function(index, result) {
                             $("#search-results ul").append(start + result.id.videoId + ">" + result.snippet.title + "</a></h4><a href=?v=" + result.id.videoId + "><img src=" + result.snippet.thumbnails.medium.url + " alt='" + result.snippet.title + "'></a></li>");
                         });
@@ -866,14 +850,14 @@ $(function() {
     // Handle form submission
     $("#form").submit(function(event) {
         event.preventDefault();
-        var formValue = $.trim($("#v").val());
-        var formValueTime = /[?&](t|time_continue)=(\d+)/g.exec(formValue);
+        let formValue = $.trim($("#v").val());
+        let formValueTime = /[?&](t|time_continue)=(\d+)/g.exec(formValue);
         if (formValueTime && formValueTime.length > 2) {
             formValue = formValue.replace(formValueTime[0], "");
             formValueTime = parseInt(formValueTime[2], 10);
         }
         if (formValue) {
-            var videoID = wrapParseYouTubeVideoID(formValue, true);
+            const videoID = wrapParseYouTubeVideoID(formValue, true);
             gtag("send", "event", "form submitted", videoID);
             if (shouldSkipYouTubeDataApi()) {
                 warningMessage.show("Skipping video lookup request while running locally.");
@@ -923,7 +907,7 @@ $(function() {
 
     $("#toggleRepeat").click(function() {
         $(this).toggleClass("toggleRepeatActive");
-        var active = $(this).hasClass("toggleRepeatActive");
+        const active = $(this).hasClass("toggleRepeatActive");
         if (active) {
             $(this).html("&#10004; Repeat Track");
         }
@@ -942,7 +926,7 @@ $(function() {
 
         // Don't continue appending to the URL if it appears "good enough".
         // This is likely only a problem if the demo link didn't work right the first time
-        var pickedDemo = pickDemo();
+        const pickedDemo = pickDemo();
         if (window.location.href.indexOf(demos) === -1) {
             window.location.href = makeListenURL(pickedDemo);
         }

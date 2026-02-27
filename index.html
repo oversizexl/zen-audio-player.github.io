@@ -1,6 +1,5 @@
 <!doctype html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8">
     <meta name="description" content="Listen to YouTube videos, without the distracting visuals">
@@ -9,6 +8,7 @@
     <meta name="google-site-verification" content="D3SjNR3tmNYOusESQijh_oH5SGmU9QsAIVwlqizwRBU" />
 
     <title>Zen Audio Player</title>
+    <!-- TODO: open graph and full favicon package -->
 
     <link rel="shortcut icon" href="img/favicon.ico" type="image/x-icon">
     <link rel="icon" href="img/favicon.ico" type="image/x-icon">
@@ -44,7 +44,6 @@
 
 <body>
     <header>
-        <!-- The logo & description -->
         <figure>
             <a href="/" title="Zen Audio Player" class="zen-logo">
                 <img src="img/zen-audio-player-905.png" class="img-100" alt="Zen Audio Player logo">
@@ -76,7 +75,7 @@
         </div>
         <div id="zen-warning" class="hide flash flash-warn"></div>
         <div id="zen-error" class="hide flash flash-error"></div>
-        <!-- The video, along with related content & messages -->
+
         <div id="audioplayer">
             <h3>
                 <a id="zen-video-title" class="plyr__cite plyr__cite--video"></a>
@@ -97,9 +96,7 @@
                 </button>
             </div>
 
-            <!-- Plyr controls' icons and Plyr player itself -->
-            <div id="plyr-svg" hidden>
-            </div>
+            <div id="plyr-svg" hidden></div>
             <video class="plyr"></video>
             <br>
             <div id="zen-video-description"></div>
@@ -136,10 +133,8 @@
                     target="_blank">Get the Chrome extension</a> - (<a
                     href="https://github.com/zen-audio-player/extension-chrome" target="_blank">source</a>)</p>
         </div>
-
         <br>
 
-        <!-- Sponsor links -->
         <h3>Sponsored by:</h3>
         <div class="sponsor">
             <a href="https://trackjs.com/" class="sponsor-a" target="_blank">
@@ -148,14 +143,13 @@
             <div class="clear-both"></div>
         </div>
 
-        <!-- social media icons -->
         <div class="repo-info">
             <br>
             <p>Source available on GitHub: <br><a href="https://github.com/zen-audio-player/zen-audio-player.github.io"
                     class="fa fa-github" target="_blank"></a></p>
         </div>
     </footer>
-    <!-- Schema.org structured data -->
+
     <script type="application/ld+json">
         {
             "@context": "http://schema.org",
@@ -165,5 +159,4 @@
         }
     </script>
 </body>
-
 </html>
