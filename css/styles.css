@@ -103,10 +103,10 @@ footer .fa {
 
 .search-input {
     width: 100%;
-    padding-left: 50px;
+    padding-left: 24px;
     margin: 0 auto;
     font-size: 16px;
-    text-align: center;
+    text-align: left;
 }
 
 .search-input::-ms-clear {
@@ -138,7 +138,8 @@ footer .fa {
 }
 
 .tt-suggestion {
-    text-align: center;
+    padding-left: 24px;
+    text-align: left;
 }
 
 .tt-cursor,

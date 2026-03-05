@@ -11,7 +11,7 @@
     "lint": "bun run lint:js && bun run lint:html && bun run lint:css && bun run lint:tests",
     "pretest": "bun run lint",
     "test": "bunx mocha",
-    "fix": "bunx eslint js/everything.js test/*.js --fix",
+    "fix": "bunx eslint js/everything.js test/*.js --fix && bunx stylelint css/*.css --fix",
     "fest": "bun run fix && bun run test",
     "start": "bunx http-server --cors -o -a localhost"
   },
@@ -35,7 +35,7 @@
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.58.2",
     "eslint": "^10.0.2",
-    "globals": "^17.3.0",
+    "globals": "^17.4.0",
     "htmlhint": "^1.9.1",
     "http-server": "^14.1.1",
     "mocha": "^11.7.5",
